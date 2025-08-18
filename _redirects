@@ -1,0 +1,8 @@
+# SPA fallback
+/*    /timer.html   200
+
+# Service Worker - no cache
+/sw.js    /sw.js   200   Cache-Control:public,max-age=0,must-revalidate
+
+# Manifest
+/manifest.json    /manifest.json   200   Cache-Control:public,max-age=86400
