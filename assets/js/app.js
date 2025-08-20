@@ -271,6 +271,7 @@ createApp({
             timerStatus: 'Ready',
             results: [],
             showClearConfirmation: false,
+            showResetConfirmation: false,
             selectedPort: null,
             selectedResultIndex: null,
             settings: {
@@ -974,6 +975,31 @@ createApp({
         
         cancelClearResults() {
             this.showClearConfirmation = false;
+        },
+        
+        showResetConfirmation() {
+            this.showResetConfirmation = true;
+        },
+        
+        resetTimer() {
+            console.log('🔄 Manual timer reset triggered');
+            this.isRunning = false;
+            this.stopRunningTimer();
+            this.displayTime = 'Ready';
+            this.timerStatus = 'Ready';
+            
+            // Clear running state for XML endpoint
+            localStorage.removeItem('timerRunning');
+            this.updateTimerDataServer();
+            
+            // Close the modal
+            this.showResetConfirmation = false;
+            
+            this.addDebugMessage('Timer manually reset - ready for next C0 signal');
+        },
+        
+        cancelResetTimer() {
+            this.showResetConfirmation = false;
         },
         
         showCopyButtonEffect(buttonType) {
