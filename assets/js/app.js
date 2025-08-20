@@ -294,6 +294,8 @@ createApp({
             startTimeAbsolute: null,
             activeUserId: null, // Track which user's timing session is active
             runningTimerInterval: null,
+            finishSignalBuffer: [], // Buffer for finish signals to prioritize c1
+            finishSignalTimeout: null, // Timeout to wait for c1 signal
             connectionCheckInterval: null,
             showConnectionLostModal: false,
             manualDisconnect: false,
@@ -436,6 +438,7 @@ createApp({
         // Clean up intervals when component is destroyed
         this.stopRunningTimer();
         this.stopConnectionMonitoring();
+        this.clearFinishSignalBuffer();
     },
     methods: {
         async toggleConnection() {
@@ -491,19 +494,29 @@ createApp({
             }
             this.addDebugMessage(`Packet received: Channel ${channelDisplay}, Mode: ${packet.mode}, Time: ${packet.originalTimeString}`);
             
-            // Start signal (channel 0, absolute time)
+            // Start signal (only C0, absolute time)
             if (packet.channelNumber === 0 && packet.mode === ProtocolAlge.TimeMode.ABSOLUTE) {
-                // Check if we're restarting or starting fresh
-                const wasRunning = this.isRunning;
+                // Only accept C0/C0M, ignore c0
+                if (!packet.originalChannelString.match(/^C0[M]?$/)) {
+                    this.addDebugMessage(`Start signal ignored - only C0/C0M accepted, got ${packet.originalChannelString}`);
+                    return;
+                }
                 
-                // Always reset and start timer on new start signal (even if already running)
+                // If already running, ignore additional C0 signals
+                if (this.isRunning) {
+                    this.addDebugMessage(`Start signal ignored - timer already running, ignoring additional C0 signal`);
+                    return;
+                }
+                
+                // Start new timing session
                 this.isRunning = true;
                 this.timerStatus = 'Running';
                 this.activeUserId = packet.userId; // Track which user started this timing session
                 this.startTime = Date.now(); // For real-time display
                 this.startTimeAbsolute = packet.absoluteTime; // For absolute time calculations
+                this.clearFinishSignalBuffer(); // Clear any stale buffered signals
                 this.startRunningTimer(); // Start real-time display
-                this.addDebugMessage(`Start signal detected - User[${packet.userId}] FDSTime[${packet.originalTimeString}]${wasRunning ? ' (restarting)' : ''}`);
+                this.addDebugMessage(`Start signal detected - User[${packet.userId}] ${packet.originalChannelString} FDSTime[${packet.originalTimeString}]`);
                 
                 // Send timer start event to API
                 if (this.settings.apiEnabled && this.settings.apiStartedEnabled) {
@@ -511,7 +524,7 @@ createApp({
                 }
             }
             
-            // Finish signal (channel 1) - includes C1, RT, RTM with delta or absolute time
+            // Finish signal (only c1/c1M/RT/RTM with delta time)
             else if (packet.channelNumber === 1) {
                 if (this.isRunning) {
                     // Only accept finish signal from the same user who started the timing
@@ -519,36 +532,75 @@ createApp({
                         this.addDebugMessage(`Finish signal ignored - User[${packet.userId}] doesn't match active timer User[${this.activeUserId}]`);
                         return;
                     }
-                    this.isRunning = false;
-                    this.stopRunningTimer(); // Stop real-time display
                     
-                    let resultTime;
-                    let timeType;
-                    
-                    if (packet.mode === ProtocolAlge.TimeMode.DELTA) {
-                        // Delta time format (RT, RTM, some C1)
-                        resultTime = packet.deltaTime;
-                        timeType = 'DeltaTime';
-                    } else if (packet.mode === ProtocolAlge.TimeMode.ABSOLUTE && this.startTimeAbsolute) {
-                        // Absolute time format (some C1/C1M) - calculate elapsed time
-                        const startTimeMs = this.startTimeAbsolute.getTime();
-                        const finishTimeMs = packet.absoluteTime.getTime();
-                        resultTime = (finishTimeMs - startTimeMs) / 1000; // Convert to seconds
-                        timeType = 'AbsoluteTime';
-                    } else {
-                        // Fallback: use delta time or 0
-                        resultTime = packet.deltaTime || 0;
-                        timeType = 'Fallback';
+                    // Only accept c1, c1M, RT, RTM - ignore C1 entirely
+                    const validFinishSignals = /^(c1[M]?|RT[M]?)$/i;
+                    if (!validFinishSignals.test(packet.originalChannelString)) {
+                        this.addDebugMessage(`Finish signal ignored - only c1/c1M/RT/RTM accepted, got ${packet.originalChannelString}`);
+                        return;
                     }
                     
-                    this.handleNewResult(resultTime);
+                    // Only process delta time signals
+                    if (packet.mode !== ProtocolAlge.TimeMode.DELTA) {
+                        this.addDebugMessage(`Finish signal ignored - only delta time accepted, got ${packet.mode} from ${packet.originalChannelString}`);
+                        return;
+                    }
                     
-                    // Enhanced debug message showing channel type and time mode
-                    const channelType = packet.originalChannelString.toUpperCase().startsWith('RT') ? 'RunTime' : 'C1';
-                    const manualFlag = packet.isManual ? ' (Manual)' : '';
-                    this.addDebugMessage(`Finish signal detected - User[${packet.userId}] ${channelType}${manualFlag} - ${timeType}[${resultTime.toFixed(3)}] FDSTime[${packet.originalTimeString}]`);
+                    // Process the finish signal immediately (no buffering needed since we ignore C1)
+                    this.addDebugMessage(`Valid finish signal received - processing ${packet.originalChannelString}`);
+                    this.processFinishSignal(packet);
                 }
             }
+        },
+        
+        bufferFinishSignal(packet) {
+            // Add packet to buffer
+            this.finishSignalBuffer.push(packet);
+            
+            // Clear any existing timeout
+            if (this.finishSignalTimeout) {
+                clearTimeout(this.finishSignalTimeout);
+            }
+            
+            // Wait 100ms for a potential c1 signal
+            this.finishSignalTimeout = setTimeout(() => {
+                this.processBufferedFinishSignals();
+            }, 100);
+        },
+        
+        processBufferedFinishSignals() {
+            if (this.finishSignalBuffer.length === 0) {
+                return;
+            }
+            
+            // Process the first (oldest) buffered signal
+            const packet = this.finishSignalBuffer[0];
+            this.addDebugMessage(`No c1 signal received - processing buffered ${packet.originalChannelString}`);
+            this.processFinishSignal(packet);
+            this.clearFinishSignalBuffer();
+        },
+        
+        clearFinishSignalBuffer() {
+            this.finishSignalBuffer = [];
+            if (this.finishSignalTimeout) {
+                clearTimeout(this.finishSignalTimeout);
+                this.finishSignalTimeout = null;
+            }
+        },
+        
+        processFinishSignal(packet) {
+            this.isRunning = false;
+            this.stopRunningTimer(); // Stop real-time display
+            
+            // Use delta time directly (no calculation needed)
+            const resultTime = packet.deltaTime;
+            
+            this.handleNewResult(resultTime);
+            
+            // Enhanced debug message
+            const channelType = packet.originalChannelString.toUpperCase().startsWith('RT') ? 'RunTime' : 'c1';
+            const manualFlag = packet.isManual ? ' (Manual)' : '';
+            this.addDebugMessage(`Finish signal processed - User[${packet.userId}] ${channelType}${manualFlag} - DeltaTime[${resultTime.toFixed(3)}] FDSTime[${packet.originalTimeString}]`);
         },
         
         handleNewResult(deltaTime) {
