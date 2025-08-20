@@ -7,7 +7,13 @@
 
 [[redirects]]
   from = "/*/xml"
-  to = "/.netlify/functions/xml"
+  to = "/xml-redirect.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/xml/:competition"
+  to = "/.netlify/functions/xml?competitionId=:competition"
   status = 200
   force = true
 

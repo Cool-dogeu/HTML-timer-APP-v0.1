@@ -6,12 +6,34 @@ exports.handler = async (event, context) => {
     // Parse the path to extract competition ID
     const path = event.path;
     console.log(`XML Function - Received path: ${path}`);
+    console.log(`XML Function - Query params:`, event.queryStringParameters);
     
-    const xmlMatch = path.match(/^\/([a-zA-Z0-9]{6,})\/xml\/?$/);
-    console.log(`XML Function - Regex match result:`, xmlMatch);
+    let competitionId = null;
     
-    if (!xmlMatch) {
-      console.log(`XML Function - No match for path: ${path}`);
+    // Try multiple path formats
+    const patterns = [
+      /^\/api\/xml\/([a-zA-Z0-9]{6,})\/?$/,  // /api/xml/mytest
+      /^\/([a-zA-Z0-9]{6,})\/xml\/?$/,       // /mytest/xml
+      /^\/\.netlify\/functions\/xml$/         // direct function call
+    ];
+    
+    for (const pattern of patterns) {
+      const match = path.match(pattern);
+      if (match && match[1]) {
+        competitionId = match[1];
+        break;
+      }
+    }
+    
+    // If no match from path, try query parameter
+    if (!competitionId && event.queryStringParameters?.competitionId) {
+      competitionId = event.queryStringParameters.competitionId;
+    }
+    
+    console.log(`XML Function - Extracted competition ID: ${competitionId}`);
+    
+    if (!competitionId || competitionId.length < 6) {
+      console.log(`XML Function - Invalid competition ID: ${competitionId}`);
       return {
         statusCode: 400,
         headers: {
@@ -23,13 +45,10 @@ exports.handler = async (event, context) => {
         },
         body: `<?xml version="1.0" encoding="UTF-8"?>
 <error>
-    <message>Invalid XML endpoint format - received path: ${path}</message>
+    <message>Invalid competition ID. Path: ${path}, ID: ${competitionId}</message>
 </error>`
       };
     }
-
-    const competitionId = xmlMatch[1];
-    console.log(`XML Function - Extracted competition ID: ${competitionId}`);
 
     // Check data sources for timer information
     let time = '0.00';
