@@ -203,6 +203,22 @@
                 <h2>Settings</h2>
                 
                 <div class="settings-section">
+                    <h3>Competition Settings</h3>
+                    <div class="form-group">
+                        <label for="competitionId">Competition ID</label>
+                        <input type="text" id="competitionId" v-model="tempSettings.competitionId" class="form-control" 
+                               placeholder="Enter competition ID (min 6 alphanumeric characters)"
+                               maxlength="20"
+                               @input="validateCompetitionId">
+                        <small class="form-help">
+                            Competition ID must be at least 6 characters long and contain only letters and numbers.
+                            This enables access to XML endpoint at /[competition_id]/xml
+                        </small>
+                        <div v-if="competitionIdError" class="form-error">{{ competitionIdError }}</div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
                     <h3>API Integration</h3>
                     <div class="form-group">
                         <label class="checkbox-label">
