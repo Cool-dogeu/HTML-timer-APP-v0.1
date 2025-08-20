@@ -295,6 +295,7 @@ createApp({
             startTimeAbsolute: null,
             activeUserId: null, // Track which user's timing session is active
             runningTimerInterval: null,
+            serverUpdateInterval: null,
             finishSignalBuffer: [], // Buffer for finish signals to prioritize c1
             finishSignalTimeout: null, // Timeout to wait for c1 signal
             connectionCheckInterval: null,
@@ -435,12 +436,18 @@ createApp({
         
         // Set initial display based on high precision setting
         this.displayTime = this.settings.highPrecisionTime ? '0.000' : '0.00';
+        
+        // Initialize timer data on server
+        this.updateTimerDataServer();
     },
     beforeUnmount() {
         // Clean up intervals when component is destroyed
         this.stopRunningTimer();
         this.stopConnectionMonitoring();
         this.clearFinishSignalBuffer();
+        if (this.serverUpdateInterval) {
+            clearInterval(this.serverUpdateInterval);
+        }
     },
     methods: {
         async toggleConnection() {
@@ -522,6 +529,7 @@ createApp({
                 
                 // Store running state for XML endpoint
                 localStorage.setItem('timerRunning', 'true');
+                this.updateTimerDataServer();
                 
                 // Send timer start event to API
                 if (this.settings.apiEnabled && this.settings.apiStartedEnabled) {
@@ -594,11 +602,14 @@ createApp({
         },
         
         processFinishSignal(packet) {
+            console.log('🛑 processFinishSignal called - stopping timer');
             this.isRunning = false;
             this.stopRunningTimer(); // Stop real-time display
             
             // Clear running state for XML endpoint
             localStorage.removeItem('timerRunning');
+            console.log('🗑️ Cleared timerRunning from localStorage');
+            this.updateTimerDataServer();
             
             // Use delta time directly (no calculation needed)
             const resultTime = packet.deltaTime;
@@ -628,6 +639,9 @@ createApp({
             
             // Save results to localStorage
             this.saveResults();
+            
+            // Update server data for XML endpoint
+            this.updateTimerDataServer();
             
             // Send result to API if enabled
             if (this.settings.apiEnabled && this.settings.apiFinishedEnabled) {
@@ -1156,6 +1170,11 @@ createApp({
             this.updateDisplayPrecision();
             this.showSettings = false;
             this.addDebugMessage('Settings saved successfully');
+            
+            // Send initial timer data to server if competition ID is set
+            if (this.settings.competitionId) {
+                this.updateTimerDataServer();
+            }
         },
         
         cancelSettings() {
@@ -1255,12 +1274,23 @@ createApp({
                     this.displayTime = this.formatTime(elapsed, this.settings.highPrecisionTime);
                 }
             }, 10); // Update every 10ms for smooth display
+            
+            // Also update server every second for XML endpoint
+            this.serverUpdateInterval = setInterval(() => {
+                if (this.isRunning) {
+                    this.updateTimerDataServer();
+                }
+            }, 1000); // Update server every second
         },
         
         stopRunningTimer() {
             if (this.runningTimerInterval) {
                 clearInterval(this.runningTimerInterval);
                 this.runningTimerInterval = null;
+            }
+            if (this.serverUpdateInterval) {
+                clearInterval(this.serverUpdateInterval);
+                this.serverUpdateInterval = null;
             }
         },
         
@@ -1461,6 +1491,62 @@ createApp({
 
             // Initial status log
             this.addDebugMessage(`PWA: Initial status - ${this.isOnline ? 'online' : 'offline'}`);
+        },
+        
+        updateTimerDataServer() {
+            // Only update if competition ID is set
+            if (!this.settings.competitionId) {
+                return;
+            }
+            
+            const timerRunning = localStorage.getItem('timerRunning') === 'true' || this.isRunning;
+            
+            // Use current display time if running, otherwise use latest result
+            let time;
+            if (this.isRunning && this.displayTime !== 'Ready') {
+                time = this.displayTime;
+            } else {
+                time = this.results.length > 0 ? this.results[0].time : '0.00';
+            }
+            
+            const timerData = {
+                time: time,
+                running: timerRunning ? '1' : '0'
+            };
+            
+            console.log(`🔄 updateTimerDataServer: isRunning=${this.isRunning}, localStorage=${localStorage.getItem('timerRunning')}, time=${time}, running=${timerData.running}`);
+            
+            // Send to server function for shared access across all browsers/IPs
+            this.sendTimerDataToServer(timerData);
+        },
+        
+        async sendTimerDataToServer(timerData) {
+            try {
+                const payload = {
+                    competitionId: this.settings.competitionId,
+                    time: timerData.time,
+                    running: timerData.running
+                };
+                
+                console.log('📤 Sending timer data to server:', payload);
+                
+                const response = await fetch('/.netlify/functions/store-timer-data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('✅ Server response:', result);
+                } else {
+                    console.warn('❌ Failed to store timer data on server:', response.status, response.statusText);
+                }
+            } catch (error) {
+                console.warn('❌ Error sending timer data to server:', error);
+            }
         }
     }
 }).mount('#app');

@@ -7,7 +7,7 @@
 
 [[redirects]]
   from = "/*/xml"
-  to = "/xml.html"
+  to = "/.netlify/functions/xml"
   status = 200
 
 [[redirects]]
@@ -41,6 +41,13 @@
   for = "/*.png"
   [headers.values]
     Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/*/xml"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate, max-age=0"
+    Pragma = "no-cache"
+    Expires = "0"
 
 [[headers]]
   for = "/*.jpg"
