@@ -5,9 +5,13 @@ exports.handler = async (event, context) => {
   try {
     // Parse the path to extract competition ID
     const path = event.path;
+    console.log(`XML Function - Received path: ${path}`);
+    
     const xmlMatch = path.match(/^\/([a-zA-Z0-9]{6,})\/xml\/?$/);
+    console.log(`XML Function - Regex match result:`, xmlMatch);
     
     if (!xmlMatch) {
+      console.log(`XML Function - No match for path: ${path}`);
       return {
         statusCode: 400,
         headers: {
@@ -19,12 +23,13 @@ exports.handler = async (event, context) => {
         },
         body: `<?xml version="1.0" encoding="UTF-8"?>
 <error>
-    <message>Invalid XML endpoint format</message>
+    <message>Invalid XML endpoint format - received path: ${path}</message>
 </error>`
       };
     }
 
     const competitionId = xmlMatch[1];
+    console.log(`XML Function - Extracted competition ID: ${competitionId}`);
 
     // Check data sources for timer information
     let time = '0.00';

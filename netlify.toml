@@ -9,6 +9,7 @@
   from = "/*/xml"
   to = "/.netlify/functions/xml"
   status = 200
+  force = true
 
 [[redirects]]
   from = "/*"
