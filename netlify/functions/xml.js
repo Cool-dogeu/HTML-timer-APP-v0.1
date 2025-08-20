@@ -13,7 +13,15 @@ exports.handler = async (event, context) => {
     let competitionId = null;
     
     // Get competition ID from query parameter (passed by Netlify redirect)
-    competitionId = event.queryStringParameters?.competitionId;
+    competitionId = event.queryStringParameters?.competitionId || event.queryStringParameters?.splat;
+    
+    // Fallback: parse from path if query parameters don't work
+    if (!competitionId && path.includes('/xml')) {
+      const pathParts = path.split('/');
+      if (pathParts.length >= 2 && pathParts[pathParts.length - 1] === 'xml') {
+        competitionId = pathParts[pathParts.length - 2];
+      }
+    }
     
     console.log(`XML Function - Extracted competition ID: ${competitionId}`);
     
