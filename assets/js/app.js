@@ -609,7 +609,6 @@ createApp({
             // Clear running state for XML endpoint
             localStorage.removeItem('timerRunning');
             console.log('🗑️ Cleared timerRunning from localStorage');
-            this.updateTimerDataServer();
             
             // Use delta time directly (no calculation needed)
             const resultTime = packet.deltaTime;
