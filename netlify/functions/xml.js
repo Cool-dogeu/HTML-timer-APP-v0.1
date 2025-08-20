@@ -17,12 +17,13 @@ exports.handler = async (event, context) => {
       return {
         statusCode: 400,
         headers: {
-          'Content-Type': 'application/xml',
+          'Content-Type': 'application/xml; charset=utf-8',
           'Access-Control-Allow-Origin': '*',
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0',
           'Pragma': 'no-cache',
           'Expires': '0',
-          'Vary': '*'
+          'Vary': '*',
+        'X-Content-Type-Options': 'nosniff'
         },
         body: `<?xml version="1.0" encoding="UTF-8"?>
 <error>
@@ -113,14 +114,16 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 200,
       headers: {
-        'Content-Type': 'application/xml',
+        'Content-Type': 'application/xml; charset=utf-8',
         'Access-Control-Allow-Origin': '*',
         'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0',
         'Pragma': 'no-cache',
         'Expires': '0',
         'ETag': `"${Date.now()}-${Math.random()}"`,
         'Last-Modified': new Date().toUTCString(),
-        'Vary': '*'
+        'Vary': '*',
+        'X-Content-Type-Options': 'nosniff',
+        'X-Content-Type-Options': 'nosniff'
       },
       body: `<?xml version="1.0" encoding="UTF-8"?>
 <timer>
@@ -133,12 +136,13 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 500,
       headers: {
-        'Content-Type': 'application/xml',
+        'Content-Type': 'application/xml; charset=utf-8',
         'Access-Control-Allow-Origin': '*',
         'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0',
         'Pragma': 'no-cache',
         'Expires': '0',
-        'Vary': '*'
+        'Vary': '*',
+        'X-Content-Type-Options': 'nosniff'
       },
       body: `<?xml version="1.0" encoding="UTF-8"?>
 <error>
