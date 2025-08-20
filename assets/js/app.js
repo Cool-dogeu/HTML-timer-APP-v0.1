@@ -656,24 +656,11 @@ createApp({
         },
         
         formatTime(seconds, highPrecision = false) {
-            const minutes = Math.floor(seconds / 60);
-            const secs = seconds % 60;
-            const precision = highPrecision ? 3 : 2;
-            
-            if (minutes === 0) {
-                // Show just seconds: "4.25" or "4.250"
-                return secs.toFixed(precision);
-            } else {
-                // Show minutes and seconds: "01:04.25" or "01:04.250"
-                return `${minutes.toString().padStart(2, '0')}:${secs.toFixed(precision).padStart(precision + 3, '0')}`;
-            }
-        },
-
-        formatTimeAsSeconds(seconds, highPrecision = false) {
             // Always format as total seconds, regardless of duration
             const precision = highPrecision ? 3 : 2;
             return seconds.toFixed(precision);
         },
+
         
         calculateResult(deltaTime) {
             if (deltaTime < 0) return 'E';
@@ -728,13 +715,7 @@ createApp({
         },
         
         copyLatestResult() {
-            // For times over 1 minute, copy in seconds format
             let textToCopy = this.displayTime;
-            
-            // Check if we have the original time in seconds and it's over 60 seconds
-            if (this.results.length > 0 && this.results[0].originalTime && this.results[0].originalTime >= 60) {
-                textToCopy = this.formatTimeAsSeconds(this.results[0].originalTime, this.settings.highPrecisionTime);
-            }
             
             navigator.clipboard.writeText(textToCopy).then(() => {
                 console.log(`Latest result [${textToCopy}] copied to clipboard.`);
@@ -750,13 +731,7 @@ createApp({
         
         copySelectedResult() {
             if (this.selectedResult) {
-                // For times over 1 minute, copy in seconds format
                 let textToCopy = this.selectedResult.time;
-                
-                // Check if original time is over 60 seconds
-                if (this.selectedResult.originalTime && this.selectedResult.originalTime >= 60) {
-                    textToCopy = this.formatTimeAsSeconds(this.selectedResult.originalTime, this.settings.highPrecisionTime);
-                }
                 
                 navigator.clipboard.writeText(textToCopy).then(() => {
                     console.log(`Result from history [${textToCopy}] copied to clipboard.`);
@@ -1047,13 +1022,7 @@ createApp({
             
             // Then copy it with the selected button effect
             if (this.selectedResult) {
-                // For times over 1 minute, copy in seconds format
                 let textToCopy = this.selectedResult.time;
-                
-                // Check if original time is over 60 seconds
-                if (this.selectedResult.originalTime && this.selectedResult.originalTime >= 60) {
-                    textToCopy = this.formatTimeAsSeconds(this.selectedResult.originalTime, this.settings.highPrecisionTime);
-                }
                 
                 navigator.clipboard.writeText(textToCopy).then(() => {
                     console.log(`Result from history [${textToCopy}] copied to clipboard via double-click.`);
@@ -1123,24 +1092,8 @@ createApp({
             const timeStr = data.time || '';
             const highPrecision = (apiSettings || this.settings).highPrecisionTime;
             
-            // Calculate time_no_decimal based on originalTime
-            let timeNoDecimal;
-            if (data.originalTime && data.originalTime >= 60) {
-                // For times over 1 minute, convert to total seconds with milliseconds/centiseconds
-                const totalSeconds = Math.floor(data.originalTime);
-                if (highPrecision) {
-                    // High precision: 3 decimal places (milliseconds)
-                    const milliseconds = Math.round((data.originalTime % 1) * 1000);
-                    timeNoDecimal = totalSeconds.toString() + milliseconds.toString().padStart(3, '0');
-                } else {
-                    // Normal precision: 2 decimal places (centiseconds)
-                    const centiseconds = Math.round((data.originalTime % 1) * 100);
-                    timeNoDecimal = totalSeconds.toString() + centiseconds.toString().padStart(2, '0');
-                }
-            } else {
-                // For times under 1 minute, use the old format (remove colons and decimal points)
-                timeNoDecimal = timeStr.replace(/[:.]/g, '');
-            }
+            // Calculate time_no_decimal - remove decimal points from seconds format
+            let timeNoDecimal = timeStr.replace(/\./g, '');
             
             const decimals = highPrecision ? 3 : 2;
             const apiKey = (apiSettings || this.settings).apiKey || '';

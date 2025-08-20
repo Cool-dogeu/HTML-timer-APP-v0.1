@@ -1,6 +1,3 @@
-// Simple global store for cross-function sharing
-global.timerDataStore = global.timerDataStore || {};
-
 exports.handler = async (event, context) => {
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -44,38 +41,38 @@ exports.handler = async (event, context) => {
       timestamp: new Date().toISOString()
     };
 
-    // Store in global variable (short-term)
-    global.timerDataStore[competitionId] = timerData;
-    
-    console.log(`Stored timer data for ${competitionId}:`, timerData);
-    
-    // Also store in a simple external service for persistence
-    let externalStorageSuccess = false;
+    console.log(`Storing timer data for ${competitionId}:`, timerData);
+
+    // Store in Upstash Redis
+    let redisSuccess = false;
     try {
-      // Use JSONBin.io free tier
-      const response = await fetch('https://api.jsonbin.io/v3/b', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Bin-Name': `timer-${competitionId}`,
-          'X-Collection-Id': '66c4af08e41b4d34e416b2b7' // Free public collection
-        },
-        body: JSON.stringify(timerData)
-      });
+      const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
+      const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
       
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Stored to external service:', result.metadata?.id);
-        externalStorageSuccess = true;
+      if (REDIS_URL && REDIS_TOKEN) {
+        // Use simple SET command with proper format
+        const response = await fetch(`${REDIS_URL}/set/timer:${competitionId}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${REDIS_TOKEN}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(JSON.stringify(timerData))
+        });
+        
+        if (response.ok) {
+          console.log(`Stored to Redis: timer:${competitionId}`);
+          redisSuccess = true;
+        } else {
+          console.warn('Redis store failed:', response.status, await response.text());
+        }
+      } else {
+        console.warn('Redis credentials not configured');
       }
     } catch (error) {
-      console.warn('External storage failed:', error.message);
+      console.warn('Redis storage error:', error.message);
     }
-    
-    // Create shareable URL with embedded data
-    const dataString = Buffer.from(JSON.stringify(timerData)).toString('base64');
-    const shareableUrl = `https://${event.headers.host}/.netlify/functions/xml?competitionId=${competitionId}&data=${dataString}`;
-    
+
     return {
       statusCode: 200,
       headers: {
@@ -85,8 +82,7 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({ 
         success: true, 
         data: timerData,
-        storage: externalStorageSuccess ? 'global+external' : 'global',
-        shareableUrl: shareableUrl,
+        storage: redisSuccess ? 'redis' : 'none',
         debug: `Stored: ${JSON.stringify(timerData)}`
       })
     };

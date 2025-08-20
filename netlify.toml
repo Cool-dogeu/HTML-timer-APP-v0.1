@@ -6,13 +6,7 @@
   NODE_VERSION = "18"
 
 [[redirects]]
-  from = "/*/xml"
-  to = "/xml-redirect.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/xml/:competition"
+  from = "/:competition/xml"
   to = "/.netlify/functions/xml?competitionId=:competition"
   status = 200
   force = true
