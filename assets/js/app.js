@@ -331,11 +331,6 @@ createApp({
         }
     },
     mounted() {
-        // Check if this is an XML endpoint request
-        if (this.checkXmlEndpoint()) {
-            return; // Stop normal app initialization
-        }
-        
         // Check if Web Serial API is available
         if (!('serial' in navigator)) {
             alert('Web Serial API is not supported in your browser. Please use Chrome or Edge.');
@@ -525,6 +520,9 @@ createApp({
                 this.startRunningTimer(); // Start real-time display
                 this.addDebugMessage(`Start signal detected - User[${packet.userId}] ${packet.originalChannelString} FDSTime[${packet.originalTimeString}]`);
                 
+                // Store running state for XML endpoint
+                localStorage.setItem('timerRunning', 'true');
+                
                 // Send timer start event to API
                 if (this.settings.apiEnabled && this.settings.apiStartedEnabled) {
                     this.sendTimerStartToApi();
@@ -598,6 +596,9 @@ createApp({
         processFinishSignal(packet) {
             this.isRunning = false;
             this.stopRunningTimer(); // Stop real-time display
+            
+            // Clear running state for XML endpoint
+            localStorage.removeItem('timerRunning');
             
             // Use delta time directly (no calculation needed)
             const resultTime = packet.deltaTime;
@@ -1460,84 +1461,6 @@ createApp({
 
             // Initial status log
             this.addDebugMessage(`PWA: Initial status - ${this.isOnline ? 'online' : 'offline'}`);
-        },
-        
-        checkXmlEndpoint() {
-            const path = window.location.pathname;
-            const xmlMatch = path.match(/^\/([a-zA-Z0-9]{6,})\/xml\/?$/);
-            
-            if (xmlMatch) {
-                const competitionId = xmlMatch[1];
-                this.handleXmlRequest(competitionId);
-                return true;
-            }
-            return false;
-        },
-        
-        handleXmlRequest(competitionId) {
-            // Load saved settings to get competition ID
-            const savedSettings = localStorage.getItem('timerSettings');
-            let settings = {};
-            if (savedSettings) {
-                settings = JSON.parse(savedSettings);
-            }
-            
-            // Check if competition ID matches
-            if (settings.competitionId !== competitionId) {
-                this.renderXmlError('Competition ID not found or not configured');
-                return;
-            }
-            
-            // Load results from localStorage
-            const savedResults = localStorage.getItem('timerResults');
-            let results = [];
-            if (savedResults) {
-                try {
-                    results = JSON.parse(savedResults);
-                } catch (error) {
-                    console.error('Error loading saved results:', error);
-                }
-            }
-            
-            // Get current timer state
-            const isRunning = this.isRunning || false;
-            const displayTime = results.length > 0 ? results[0].time : '0.00';
-            
-            this.renderXml(displayTime, isRunning);
-        },
-        
-        renderXml(time, running) {
-            const runningValue = running ? '1' : '0';
-            const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
-<timer>
-    <time>${time}</time>
-    <running>${runningValue}</running>
-</timer>`;
-            
-            // Replace the entire page with XML content
-            document.open();
-            document.write(xmlContent);
-            document.close();
-            
-            // Set correct content type
-            if (document.contentType) {
-                document.contentType = 'application/xml';
-            }
-        },
-        
-        renderXmlError(errorMessage) {
-            const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
-<error>
-    <message>${errorMessage}</message>
-</error>`;
-            
-            document.open();
-            document.write(xmlContent);
-            document.close();
-            
-            if (document.contentType) {
-                document.contentType = 'application/xml';
-            }
         }
     }
 }).mount('#app');

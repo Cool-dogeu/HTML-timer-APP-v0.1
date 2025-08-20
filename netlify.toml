@@ -6,6 +6,11 @@
   NODE_VERSION = "18"
 
 [[redirects]]
+  from = "/*/xml"
+  to = "/xml.html"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/timer.html"
   status = 200
