@@ -6,8 +6,14 @@
   NODE_VERSION = "18"
 
 [[redirects]]
-  from = "/*/xml"
-  to = "/.netlify/functions/xml?competitionId=:splat"
+  from = "/xml/:competition"
+  to = "/.netlify/functions/xml?competitionId=:competition"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/:competition/xml"
+  to = "/.netlify/functions/xml?competitionId=:competition"
   status = 200
   force = true
 

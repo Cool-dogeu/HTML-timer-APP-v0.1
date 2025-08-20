@@ -1,9 +1,14 @@
 exports.handler = async (event, context) => {
+  // Log everything for debugging
+  console.log(`🔥🔥🔥 XML FUNCTION CALLED 🔥🔥🔥`);
+  console.log(`Path: ${event.path}`);
+  console.log(`Query: ${JSON.stringify(event.queryStringParameters)}`);
+  console.log(`Headers: ${JSON.stringify(event.headers)}`);
+  console.log(`Method: ${event.httpMethod}`);
+  
   try {
     // Parse the path to extract competition ID
     const path = event.path;
-    console.log(`XML Function - Received path: ${path}`);
-    console.log(`XML Function - Query params:`, event.queryStringParameters);
     
     let competitionId = null;
     
