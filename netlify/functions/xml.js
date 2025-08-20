@@ -1,11 +1,5 @@
-const fs = require('fs');
-const path = require('path');
-
 // Access the same global store
 global.timerDataStore = global.timerDataStore || {};
-
-// File-based storage for persistence
-const dataDir = path.join(__dirname, '../../.netlify-timer-data');
 
 exports.handler = async (event, context) => {
   try {
@@ -38,28 +32,14 @@ exports.handler = async (event, context) => {
     let dataSource = 'default';
     
     // 1. Check global store first
-    let storedData = global.timerDataStore[competitionId];
+    const storedData = global.timerDataStore[competitionId];
     if (storedData) {
       time = storedData.time || '0.00';
       running = storedData.running || '0';
       dataSource = 'global-store';
-    } else {
-      // 2. Try to read from file if not in global store
-      const filePath = path.join(dataDir, `${competitionId}.json`);
-      if (fs.existsSync(filePath)) {
-        try {
-          const fileData = fs.readFileSync(filePath, 'utf8');
-          storedData = JSON.parse(fileData);
-          time = storedData.time || '0.00';
-          running = storedData.running || '0';
-          dataSource = 'file-store';
-        } catch (fileError) {
-          console.error('Error reading timer data file:', fileError);
-        }
-      }
     }
     
-    // 3. Check URL parameters (for shareable URLs with embedded data)
+    // 2. Check URL parameters (for shareable URLs with embedded data)
     if (time === '0.00' && running === '0') {
       const urlData = event.queryStringParameters?.data;
       if (urlData) {

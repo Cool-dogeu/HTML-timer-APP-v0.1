@@ -1,14 +1,5 @@
-const fs = require('fs');
-const path = require('path');
-
 // Simple global store for cross-function sharing
 global.timerDataStore = global.timerDataStore || {};
-
-// File-based storage for persistence
-const dataDir = path.join(__dirname, '../../.netlify-timer-data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
 
 exports.handler = async (event, context) => {
   // Handle CORS preflight
@@ -53,14 +44,14 @@ exports.handler = async (event, context) => {
       timestamp: new Date().toISOString()
     };
 
-    // Store in both global variable and file
+    // Store in global variable (works for short-term sharing on Netlify)
     global.timerDataStore[competitionId] = timerData;
     
-    // Also write to file for persistence
-    const filePath = path.join(dataDir, `${competitionId}.json`);
-    fs.writeFileSync(filePath, JSON.stringify(timerData, null, 2));
-    
     console.log(`Stored timer data for ${competitionId}:`, timerData);
+    
+    // Also create a shareable URL with embedded data
+    const dataString = Buffer.from(JSON.stringify(timerData)).toString('base64');
+    const shareableUrl = `https://${event.headers.host}/${competitionId}/xml?data=${dataString}`;
     
     return {
       statusCode: 200,
@@ -71,8 +62,8 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({ 
         success: true, 
         data: timerData,
-        storage: 'global+file',
-        filePath: filePath,
+        storage: 'global',
+        shareableUrl: shareableUrl,
         debug: `Stored: ${JSON.stringify(timerData)}`
       })
     };
