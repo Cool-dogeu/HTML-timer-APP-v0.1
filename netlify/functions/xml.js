@@ -55,59 +55,30 @@ exports.handler = async (event, context) => {
     let running = '0';
     let dataSource = 'default';
     
-    // 1. Check global store first
-    let storedData = global.timerDataStore[competitionId];
-    if (storedData) {
-      time = storedData.time || '0.00';
-      running = storedData.running || '0';
-      dataSource = 'global-store';
-    } else {
-      // 2. Try external storage (JSONBin.io)
+    // 1. FIRST: Check URL parameters (most reliable for current data)
+    const urlData = event.queryStringParameters?.data;
+    if (urlData) {
       try {
-        const response = await fetch(`https://api.jsonbin.io/v3/c/66c4af08e41b4d34e416b2b7/bins`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (response.ok) {
-          const bins = await response.json();
-          // Find the latest bin for this competition
-          const timerBin = bins.find(bin => bin.name === `timer-${competitionId}`);
-          if (timerBin) {
-            const binResponse = await fetch(`https://api.jsonbin.io/v3/b/${timerBin.id}/latest`);
-            if (binResponse.ok) {
-              const binData = await binResponse.json();
-              if (binData.record) {
-                storedData = binData.record;
-                time = storedData.time || '0.00';
-                running = storedData.running || '0';
-                dataSource = 'external-store';
-              }
-            }
-          }
+        const decodedData = Buffer.from(urlData, 'base64').toString('utf-8');
+        const timerData = JSON.parse(decodedData);
+        console.log('Found URL data:', timerData);
+        if (timerData.competitionId === competitionId) {
+          time = timerData.time || '0.00';
+          running = timerData.running || '0';
+          dataSource = 'url-params';
         }
-      } catch (error) {
-        console.log('External storage read failed:', error.message);
+      } catch (e) {
+        console.log('Invalid URL data:', e.message);
       }
     }
     
-    // 3. Check URL parameters (for shareable URLs with embedded data)
+    // 2. Fallback: Check global store 
     if (time === '0.00' && running === '0') {
-      const urlData = event.queryStringParameters?.data;
-      if (urlData) {
-        try {
-          const decodedData = Buffer.from(urlData, 'base64').toString('utf-8');
-          const timerData = JSON.parse(decodedData);
-          if (timerData.competitionId === competitionId) {
-            time = timerData.time || '0.00';
-            running = timerData.running || '0';
-            dataSource = 'url-params';
-          }
-        } catch (e) {
-          // Invalid URL data, use defaults
-        }
+      const storedData = global.timerDataStore[competitionId];
+      if (storedData) {
+        time = storedData.time || '0.00';
+        running = storedData.running || '0';
+        dataSource = 'global-store';
       }
     }
     

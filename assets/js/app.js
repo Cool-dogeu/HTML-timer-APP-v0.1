@@ -1521,36 +1521,41 @@ createApp({
         },
         
         async sendTimerDataToServer(timerData) {
+            // Create immediate shareable URL with embedded data
+            const dataForUrl = {
+                competitionId: this.settings.competitionId,
+                time: timerData.time,
+                running: timerData.running,
+                timestamp: new Date().toISOString()
+            };
+            
+            const dataString = btoa(JSON.stringify(dataForUrl));
+            const shareableUrl = `${window.location.origin}/.netlify/functions/xml?competitionId=${this.settings.competitionId}&data=${dataString}`;
+            
+            console.log('🔗 Live XML URL:', shareableUrl);
+            console.log('📊 Timer data:', timerData);
+            
+            // Also try to store on server (but don't depend on it)
             try {
-                const payload = {
-                    competitionId: this.settings.competitionId,
-                    time: timerData.time,
-                    running: timerData.running
-                };
-                
-                console.log('📤 Sending timer data to server:', payload);
-                
                 const response = await fetch('/.netlify/functions/store-timer-data', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({
+                        competitionId: this.settings.competitionId,
+                        time: timerData.time,
+                        running: timerData.running
+                    })
                 });
                 
                 if (response.ok) {
-                    const result = await response.json();
-                    console.log('✅ Server response:', result);
-                    
-                    // Show the shareable URL in debug
-                    if (result.shareableUrl) {
-                        console.log('🔗 Shareable XML URL:', result.shareableUrl);
-                    }
+                    console.log('✅ Server storage succeeded');
                 } else {
-                    console.warn('❌ Failed to store timer data on server:', response.status, response.statusText);
+                    console.log('⚠️ Server storage failed, using URL fallback');
                 }
             } catch (error) {
-                console.warn('❌ Error sending timer data to server:', error);
+                console.log('⚠️ Server error, using URL fallback:', error.message);
             }
         }
     }
