@@ -44,14 +44,37 @@ exports.handler = async (event, context) => {
       timestamp: new Date().toISOString()
     };
 
-    // Store in global variable (works for short-term sharing on Netlify)
+    // Store in global variable (short-term)
     global.timerDataStore[competitionId] = timerData;
     
     console.log(`Stored timer data for ${competitionId}:`, timerData);
     
-    // Also create a shareable URL with embedded data
+    // Also store in a simple external service for persistence
+    let externalStorageSuccess = false;
+    try {
+      // Use JSONBin.io free tier
+      const response = await fetch('https://api.jsonbin.io/v3/b', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Bin-Name': `timer-${competitionId}`,
+          'X-Collection-Id': '66c4af08e41b4d34e416b2b7' // Free public collection
+        },
+        body: JSON.stringify(timerData)
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Stored to external service:', result.metadata?.id);
+        externalStorageSuccess = true;
+      }
+    } catch (error) {
+      console.warn('External storage failed:', error.message);
+    }
+    
+    // Create shareable URL with embedded data
     const dataString = Buffer.from(JSON.stringify(timerData)).toString('base64');
-    const shareableUrl = `https://${event.headers.host}/${competitionId}/xml?data=${dataString}`;
+    const shareableUrl = `https://${event.headers.host}/.netlify/functions/xml?competitionId=${competitionId}&data=${dataString}`;
     
     return {
       statusCode: 200,
@@ -62,7 +85,7 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({ 
         success: true, 
         data: timerData,
-        storage: 'global',
+        storage: externalStorageSuccess ? 'global+external' : 'global',
         shareableUrl: shareableUrl,
         debug: `Stored: ${JSON.stringify(timerData)}`
       })

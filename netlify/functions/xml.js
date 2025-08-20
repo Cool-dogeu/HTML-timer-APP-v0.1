@@ -56,14 +56,44 @@ exports.handler = async (event, context) => {
     let dataSource = 'default';
     
     // 1. Check global store first
-    const storedData = global.timerDataStore[competitionId];
+    let storedData = global.timerDataStore[competitionId];
     if (storedData) {
       time = storedData.time || '0.00';
       running = storedData.running || '0';
       dataSource = 'global-store';
+    } else {
+      // 2. Try external storage (JSONBin.io)
+      try {
+        const response = await fetch(`https://api.jsonbin.io/v3/c/66c4af08e41b4d34e416b2b7/bins`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const bins = await response.json();
+          // Find the latest bin for this competition
+          const timerBin = bins.find(bin => bin.name === `timer-${competitionId}`);
+          if (timerBin) {
+            const binResponse = await fetch(`https://api.jsonbin.io/v3/b/${timerBin.id}/latest`);
+            if (binResponse.ok) {
+              const binData = await binResponse.json();
+              if (binData.record) {
+                storedData = binData.record;
+                time = storedData.time || '0.00';
+                running = storedData.running || '0';
+                dataSource = 'external-store';
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.log('External storage read failed:', error.message);
+      }
     }
     
-    // 2. Check URL parameters (for shareable URLs with embedded data)
+    // 3. Check URL parameters (for shareable URLs with embedded data)
     if (time === '0.00' && running === '0') {
       const urlData = event.queryStringParameters?.data;
       if (urlData) {

@@ -1541,6 +1541,11 @@ createApp({
                 if (response.ok) {
                     const result = await response.json();
                     console.log('✅ Server response:', result);
+                    
+                    // Show the shareable URL in debug
+                    if (result.shareableUrl) {
+                        console.log('🔗 Shareable XML URL:', result.shareableUrl);
+                    }
                 } else {
                     console.warn('❌ Failed to store timer data on server:', response.status, response.statusText);
                 }
