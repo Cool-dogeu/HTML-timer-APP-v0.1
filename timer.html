@@ -56,10 +56,6 @@
                         <i class="material-icons">{{ copyButtonEffect === 'latest' ? 'check' : 'content_copy' }}</i>
                         {{ copyButtonEffect === 'latest' ? 'Copied!' : 'Copy' }}
                     </button>
-                    <button @click="showResetConfirmation" class="btn btn-warning" :disabled="!isRunning" style="margin-left: 8px;">
-                        <i class="material-icons">refresh</i>
-                        Reset
-                    </button>
                 </div>
                 <div class="timer-display" :class="{ running: isRunning }" @dblclick="copyLatestResult" title="Double-click to copy">
                     <div class="timer-value">{{ displayTime }}</div>
@@ -197,18 +193,6 @@
                 <div class="modal-buttons">
                     <button @click="clearResults" class="btn btn-danger">Clear All Results</button>
                     <button @click="cancelClearResults" class="btn btn-secondary">Cancel</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Reset Timer Confirmation Modal -->
-        <div v-if="showResetConfirmation" class="modal-backdrop" @click="cancelResetTimer">
-            <div class="modal confirmation-modal" @click.stop>
-                <h2>Reset Timer</h2>
-                <p>Are you sure you want to reset the current timer? This will stop the running timer and prepare for the next C0 signal.</p>
-                <div class="modal-buttons">
-                    <button @click="resetTimer" class="btn btn-warning">Reset Timer</button>
-                    <button @click="cancelResetTimer" class="btn btn-secondary">Cancel</button>
                 </div>
             </div>
         </div>
