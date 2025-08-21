@@ -547,9 +547,9 @@ createApp({
                     }
                     
                     // Prioritize RT/RTM over C1 signals
-                    const rtSignals = /^RT[M]?$/i;
-                    const c1Signals = /^c1[M]?$/i;
-                    const C1Signals = /^C1[M]?$/i;
+                    const rtSignals = /^RT[M]?$/i;        // Case-insensitive for RT/RTM
+                    const c1Signals = /^c1[M]?$/;         // Case-sensitive for c1/c1M only
+                    const C1Signals = /^C1[M]?$/;         // Case-sensitive for C1/C1M only
                     
                     if (rtSignals.test(packet.originalChannelString)) {
                         // RT/RTM signals: Process immediately (highest priority)
