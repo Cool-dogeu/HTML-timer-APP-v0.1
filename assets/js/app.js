@@ -546,22 +546,38 @@ createApp({
                         return;
                     }
                     
-                    // Only accept c1, c1M, RT, RTM - ignore C1 entirely
-                    const validFinishSignals = /^(c1[M]?|RT[M]?)$/i;
-                    if (!validFinishSignals.test(packet.originalChannelString)) {
-                        this.addDebugMessage(`Finish signal ignored - only c1/c1M/RT/RTM accepted, got ${packet.originalChannelString}`);
+                    // Prioritize RT/RTM over C1 signals
+                    const rtSignals = /^RT[M]?$/i;
+                    const c1Signals = /^c1[M]?$/i;
+                    const C1Signals = /^C1[M]?$/i;
+                    
+                    if (rtSignals.test(packet.originalChannelString)) {
+                        // RT/RTM signals: Process immediately (highest priority)
+                        if (packet.mode !== ProtocolAlge.TimeMode.DELTA) {
+                            this.addDebugMessage(`RT signal ignored - only delta time accepted, got ${packet.mode} from ${packet.originalChannelString}`);
+                            return;
+                        }
+                        this.addDebugMessage(`RT signal received - processing immediately: ${packet.originalChannelString}`);
+                        this.processFinishSignal(packet);
+                        
+                    } else if (c1Signals.test(packet.originalChannelString)) {
+                        // c1/c1M signals: Process immediately (medium priority)  
+                        if (packet.mode !== ProtocolAlge.TimeMode.DELTA) {
+                            this.addDebugMessage(`c1 signal ignored - only delta time accepted, got ${packet.mode} from ${packet.originalChannelString}`);
+                            return;
+                        }
+                        this.addDebugMessage(`c1 signal received - processing immediately: ${packet.originalChannelString}`);
+                        this.processFinishSignal(packet);
+                        
+                    } else if (C1Signals.test(packet.originalChannelString)) {
+                        // C1/C1M signals: Buffer and wait for RT/c1 (lowest priority)
+                        this.addDebugMessage(`C1 signal received - buffering in case RT/c1 arrives: ${packet.originalChannelString}`);
+                        this.bufferFinishSignal(packet);
+                        
+                    } else {
+                        this.addDebugMessage(`Finish signal ignored - only c1/c1M/RT/RTM/C1/C1M accepted, got ${packet.originalChannelString}`);
                         return;
                     }
-                    
-                    // Only process delta time signals
-                    if (packet.mode !== ProtocolAlge.TimeMode.DELTA) {
-                        this.addDebugMessage(`Finish signal ignored - only delta time accepted, got ${packet.mode} from ${packet.originalChannelString}`);
-                        return;
-                    }
-                    
-                    // Process the finish signal immediately (no buffering needed since we ignore C1)
-                    this.addDebugMessage(`Valid finish signal received - processing ${packet.originalChannelString}`);
-                    this.processFinishSignal(packet);
                 }
             }
         },
