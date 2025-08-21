@@ -82,6 +82,10 @@
                         <i class="material-icons">info</i>
                         Info
                     </button>
+                    <button @click="clearTimerButton" class="btn btn-danger" :disabled="!canClearTimer">
+                        <i class="material-icons">clear</i>
+                        Clear Timer
+                    </button>
                 </div>
             </section>
 
@@ -193,6 +197,18 @@
                 <div class="modal-buttons">
                     <button @click="clearResults" class="btn btn-danger">Clear All Results</button>
                     <button @click="cancelClearResults" class="btn btn-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Clear Timer Confirmation Modal -->
+        <div v-if="showClearTimerConfirmation" class="modal-backdrop" @click="cancelClearTimer">
+            <div class="modal confirmation-modal" @click.stop>
+                <h2>Clear Timer</h2>
+                <p>Are you sure you want to clear the current timer? This will record a fault result (0.00 seconds) and stop the timer.</p>
+                <div class="modal-buttons">
+                    <button @click="clearTimer" class="btn btn-danger">Clear Timer</button>
+                    <button @click="cancelClearTimer" class="btn btn-secondary">Cancel</button>
                 </div>
             </div>
         </div>

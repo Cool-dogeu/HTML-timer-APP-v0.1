@@ -271,6 +271,7 @@ createApp({
             timerStatus: 'Ready',
             results: [],
             showClearConfirmation: false,
+            showClearTimerConfirmation: false,
             selectedPort: null,
             selectedResultIndex: null,
             settings: {
@@ -295,6 +296,7 @@ createApp({
             startTimeAbsolute: null,
             activeUserId: null, // Track which user's timing session is active
             runningTimerInterval: null,
+            elapsedSeconds: 0, // Track elapsed time for Clear button
             serverUpdateInterval: null,
             finishSignalBuffer: [], // Buffer for finish signals to prioritize c1
             finishSignalTimeout: null, // Timeout to wait for c1 signal
@@ -329,6 +331,13 @@ createApp({
         },
         statusLedClass() {
             return this.isConnected ? 'status-ok' : 'status-error';
+        },
+        canClearTimer() {
+            if (!this.isRunning) {
+                return false;
+            }
+            // Check if timer has been running for more than 180 seconds (3 minutes)
+            return this.elapsedSeconds > 180;
         }
     },
     mounted() {
@@ -522,6 +531,7 @@ createApp({
                 this.timerStatus = 'Running';
                 this.activeUserId = packet.userId; // Track which user started this timing session
                 this.startTime = Date.now(); // For real-time display
+                this.elapsedSeconds = 0; // Reset elapsed time for Clear button
                 this.startTimeAbsolute = packet.absoluteTime; // For absolute time calculations
                 this.clearFinishSignalBuffer(); // Clear any stale buffered signals
                 this.startRunningTimer(); // Start real-time display
@@ -621,6 +631,12 @@ createApp({
             console.log('🛑 processFinishSignal called - stopping timer');
             this.isRunning = false;
             this.stopRunningTimer(); // Stop real-time display
+            
+            // Auto-close Clear confirmation popup if it's open (real signal received)
+            if (this.showClearTimerConfirmation) {
+                console.log('🟥 Auto-closing Clear confirmation popup - real finish signal received');
+                this.showClearTimerConfirmation = false;
+            }
             
             // Clear running state for XML endpoint
             localStorage.removeItem('timerRunning');
@@ -992,6 +1008,41 @@ createApp({
             this.showClearConfirmation = false;
         },
         
+        // Timer Control Methods
+        clearTimerButton() {
+            console.log('🟥 Clear button clicked - showing confirmation');
+            this.showClearTimerConfirmation = true;
+        },
+        
+        clearTimer() {
+            console.log('🟥 Manual timer clear triggered - simulating c1 with 0:00:00');
+            
+            // Create a fake c1 packet with 0.00 time (fault)
+            const faultPacket = {
+                userId: this.activeUserId || 1,
+                channelNumber: 1,
+                mode: ProtocolAlge.TimeMode.DELTA,
+                isManual: false,
+                deltaTime: 0.0, // Fault time
+                absoluteTime: null,
+                status: 0,
+                originalTimeString: '0.0000',
+                originalChannelString: 'c1'
+            };
+            
+            // Process it like a real finish signal
+            this.processFinishSignal(faultPacket);
+            
+            // Close the modal
+            this.showClearTimerConfirmation = false;
+            
+            this.addDebugMessage('Timer manually cleared - fault result recorded');
+        },
+        
+        cancelClearTimer() {
+            this.showClearTimerConfirmation = false;
+        },
+        
         showCopyButtonEffect(buttonType) {
             this.copyButtonEffect = buttonType;
             
@@ -1240,6 +1291,7 @@ createApp({
                 if (this.isRunning && this.startTime) {
                     const elapsed = (Date.now() - this.startTime) / 1000; // Convert to seconds
                     this.displayTime = this.formatTime(elapsed, this.settings.highPrecisionTime);
+                    this.elapsedSeconds = elapsed; // Update for Clear button
                 }
             }, 10); // Update every 10ms for smooth display
             
