@@ -38,6 +38,10 @@
                 <h1>Agility Timer Online</h1>
             </div>
             <div class="connection-status">
+                <button @click="confirmRefresh" class="btn btn-secondary btn-small">
+                    <i class="material-icons">refresh</i>
+                    Refresh
+                </button>
                 <span class="status-led" :class="statusLedClass"></span>
                 <span>{{ connectionStatus }}</span>
                 <span v-if="!isOnline" class="offline-indicator">
@@ -81,10 +85,6 @@
                     <button @click="openInfo" class="btn btn-secondary">
                         <i class="material-icons">info</i>
                         Info
-                    </button>
-                    <button @click="clearTimerButton" class="btn btn-danger" :disabled="!canClearTimer">
-                        <i class="material-icons">clear</i>
-                        Clear Timer
                     </button>
                 </div>
             </section>
@@ -201,14 +201,15 @@
             </div>
         </div>
 
-        <!-- Clear Timer Confirmation Modal -->
-        <div v-if="showClearTimerConfirmation" class="modal-backdrop" @click="cancelClearTimer">
+        <!-- Refresh Confirmation Modal -->
+        <div v-if="showRefreshConfirmation" class="modal-backdrop" @click="cancelRefresh">
             <div class="modal confirmation-modal" @click.stop>
-                <h2>Clear Timer</h2>
-                <p>Are you sure you want to clear the current timer? This will record a fault result (0.00 seconds) and stop the timer.</p>
+                <h2>Refresh Page</h2>
+                <p v-if="isRunning"><strong>Warning:</strong> The timer is currently running. Refreshing will stop the current run and the time will be lost.</p>
+                <p v-else>Are you sure you want to refresh the page? Any unsaved changes will be lost.</p>
                 <div class="modal-buttons">
-                    <button @click="clearTimer" class="btn btn-danger">Clear Timer</button>
-                    <button @click="cancelClearTimer" class="btn btn-secondary">Cancel</button>
+                    <button @click="refreshPage" class="btn btn-danger">{{ isRunning ? 'Stop Timer & Refresh' : 'Refresh Page' }}</button>
+                    <button @click="cancelRefresh" class="btn btn-secondary">Cancel</button>
                 </div>
             </div>
         </div>
