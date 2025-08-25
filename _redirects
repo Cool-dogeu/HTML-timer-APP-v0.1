@@ -1,8 +1,12 @@
-# SPA fallback
-/*    /timer.html   200
+# XML API endpoints - must come BEFORE the catch-all
+/*/xml /.netlify/functions/xml?competitionId=:splat 200
+/:competition/xml /.netlify/functions/xml?competitionId=:competition 200
 
 # Service Worker - no cache
 /sw.js    /sw.js   200   Cache-Control:public,max-age=0,must-revalidate
 
 # Manifest
 /manifest.json    /manifest.json   200   Cache-Control:public,max-age=86400
+
+# SPA fallback - MUST be last
+/*    /timer.html   200

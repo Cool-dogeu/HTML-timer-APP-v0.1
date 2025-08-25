@@ -277,6 +277,7 @@ createApp({
                 highPrecisionTime: false,
                 debugMode: false,
                 autoConnectEnabled: true, // Allow auto-connection on app start
+                competitionId: '',
                 apiEnabled: false,
                 apiProvider: 'other', // 'agigames' or 'other'
                 apiEndpoint: '',
@@ -294,6 +295,7 @@ createApp({
             startTimeAbsolute: null,
             activeUserId: null, // Track which user's timing session is active
             runningTimerInterval: null,
+            serverUpdateInterval: null,
             finishSignalBuffer: [], // Buffer for finish signals to prioritize c1
             finishSignalTimeout: null, // Timeout to wait for c1 signal
             connectionCheckInterval: null,
@@ -311,10 +313,12 @@ createApp({
             copyButtonTimeout: null,
             showSettings: false,
             showInfo: false,
+            showRefreshConfirmation: false,
             tempSettings: {},
             apiTestInProgress: false,
             apiTestResult: null,
-            showApiKey: false
+            showApiKey: false,
+            competitionIdError: ''
         };
     },
     computed: {
@@ -433,12 +437,18 @@ createApp({
         
         // Set initial display based on high precision setting
         this.displayTime = this.settings.highPrecisionTime ? '0.000' : '0.00';
+        
+        // Initialize timer data on server
+        this.updateTimerDataServer();
     },
     beforeUnmount() {
         // Clean up intervals when component is destroyed
         this.stopRunningTimer();
         this.stopConnectionMonitoring();
         this.clearFinishSignalBuffer();
+        if (this.serverUpdateInterval) {
+            clearInterval(this.serverUpdateInterval);
+        }
     },
     methods: {
         async toggleConnection() {
@@ -518,6 +528,10 @@ createApp({
                 this.startRunningTimer(); // Start real-time display
                 this.addDebugMessage(`Start signal detected - User[${packet.userId}] ${packet.originalChannelString} FDSTime[${packet.originalTimeString}]`);
                 
+                // Store running state for XML endpoint
+                localStorage.setItem('timerRunning', 'true');
+                this.updateTimerDataServer();
+                
                 // Send timer start event to API
                 if (this.settings.apiEnabled && this.settings.apiStartedEnabled) {
                     this.sendTimerStartToApi();
@@ -533,22 +547,38 @@ createApp({
                         return;
                     }
                     
-                    // Only accept c1, c1M, RT, RTM - ignore C1 entirely
-                    const validFinishSignals = /^(c1[M]?|RT[M]?)$/i;
-                    if (!validFinishSignals.test(packet.originalChannelString)) {
-                        this.addDebugMessage(`Finish signal ignored - only c1/c1M/RT/RTM accepted, got ${packet.originalChannelString}`);
+                    // Prioritize RT/RTM over C1 signals
+                    const rtSignals = /^RT[M]?$/i;        // Case-insensitive for RT/RTM
+                    const c1Signals = /^c1[M]?$/;         // Case-sensitive for c1/c1M only
+                    const C1Signals = /^C1[M]?$/;         // Case-sensitive for C1/C1M only
+                    
+                    if (rtSignals.test(packet.originalChannelString)) {
+                        // RT/RTM signals: Process immediately (highest priority)
+                        if (packet.mode !== ProtocolAlge.TimeMode.DELTA) {
+                            this.addDebugMessage(`RT signal ignored - only delta time accepted, got ${packet.mode} from ${packet.originalChannelString}`);
+                            return;
+                        }
+                        this.addDebugMessage(`RT signal received - processing immediately: ${packet.originalChannelString}`);
+                        this.processFinishSignal(packet);
+                        
+                    } else if (c1Signals.test(packet.originalChannelString)) {
+                        // c1/c1M signals: Process immediately (medium priority)  
+                        if (packet.mode !== ProtocolAlge.TimeMode.DELTA) {
+                            this.addDebugMessage(`c1 signal ignored - only delta time accepted, got ${packet.mode} from ${packet.originalChannelString}`);
+                            return;
+                        }
+                        this.addDebugMessage(`c1 signal received - processing immediately: ${packet.originalChannelString}`);
+                        this.processFinishSignal(packet);
+                        
+                    } else if (C1Signals.test(packet.originalChannelString)) {
+                        // C1/C1M signals: Buffer and wait for RT/c1 (lowest priority)
+                        this.addDebugMessage(`C1 signal received - buffering in case RT/c1 arrives: ${packet.originalChannelString}`);
+                        this.bufferFinishSignal(packet);
+                        
+                    } else {
+                        this.addDebugMessage(`Finish signal ignored - only c1/c1M/RT/RTM/C1/C1M accepted, got ${packet.originalChannelString}`);
                         return;
                     }
-                    
-                    // Only process delta time signals
-                    if (packet.mode !== ProtocolAlge.TimeMode.DELTA) {
-                        this.addDebugMessage(`Finish signal ignored - only delta time accepted, got ${packet.mode} from ${packet.originalChannelString}`);
-                        return;
-                    }
-                    
-                    // Process the finish signal immediately (no buffering needed since we ignore C1)
-                    this.addDebugMessage(`Valid finish signal received - processing ${packet.originalChannelString}`);
-                    this.processFinishSignal(packet);
                 }
             }
         },
@@ -589,8 +619,14 @@ createApp({
         },
         
         processFinishSignal(packet) {
+            console.log('🛑 processFinishSignal called - stopping timer');
             this.isRunning = false;
             this.stopRunningTimer(); // Stop real-time display
+            
+            
+            // Clear running state for XML endpoint
+            localStorage.removeItem('timerRunning');
+            console.log('🗑️ Cleared timerRunning from localStorage');
             
             // Use delta time directly (no calculation needed)
             const resultTime = packet.deltaTime;
@@ -621,6 +657,9 @@ createApp({
             // Save results to localStorage
             this.saveResults();
             
+            // Update server data for XML endpoint
+            this.updateTimerDataServer();
+            
             // Send result to API if enabled
             if (this.settings.apiEnabled && this.settings.apiFinishedEnabled) {
                 this.sendResultToApi(result);
@@ -634,24 +673,11 @@ createApp({
         },
         
         formatTime(seconds, highPrecision = false) {
-            const minutes = Math.floor(seconds / 60);
-            const secs = seconds % 60;
-            const precision = highPrecision ? 3 : 2;
-            
-            if (minutes === 0) {
-                // Show just seconds: "4.25" or "4.250"
-                return secs.toFixed(precision);
-            } else {
-                // Show minutes and seconds: "01:04.25" or "01:04.250"
-                return `${minutes.toString().padStart(2, '0')}:${secs.toFixed(precision).padStart(precision + 3, '0')}`;
-            }
-        },
-
-        formatTimeAsSeconds(seconds, highPrecision = false) {
             // Always format as total seconds, regardless of duration
             const precision = highPrecision ? 3 : 2;
             return seconds.toFixed(precision);
         },
+
         
         calculateResult(deltaTime) {
             if (deltaTime < 0) return 'E';
@@ -706,13 +732,7 @@ createApp({
         },
         
         copyLatestResult() {
-            // For times over 1 minute, copy in seconds format
             let textToCopy = this.displayTime;
-            
-            // Check if we have the original time in seconds and it's over 60 seconds
-            if (this.results.length > 0 && this.results[0].originalTime && this.results[0].originalTime >= 60) {
-                textToCopy = this.formatTimeAsSeconds(this.results[0].originalTime, this.settings.highPrecisionTime);
-            }
             
             navigator.clipboard.writeText(textToCopy).then(() => {
                 console.log(`Latest result [${textToCopy}] copied to clipboard.`);
@@ -728,13 +748,7 @@ createApp({
         
         copySelectedResult() {
             if (this.selectedResult) {
-                // For times over 1 minute, copy in seconds format
                 let textToCopy = this.selectedResult.time;
-                
-                // Check if original time is over 60 seconds
-                if (this.selectedResult.originalTime && this.selectedResult.originalTime >= 60) {
-                    textToCopy = this.formatTimeAsSeconds(this.selectedResult.originalTime, this.settings.highPrecisionTime);
-                }
                 
                 navigator.clipboard.writeText(textToCopy).then(() => {
                     console.log(`Result from history [${textToCopy}] copied to clipboard.`);
@@ -980,6 +994,19 @@ createApp({
             this.showClearConfirmation = false;
         },
         
+        // Page Control Methods
+        confirmRefresh() {
+            this.showRefreshConfirmation = true;
+        },
+        
+        refreshPage() {
+            window.location.reload();
+        },
+        
+        cancelRefresh() {
+            this.showRefreshConfirmation = false;
+        },
+        
         showCopyButtonEffect(buttonType) {
             this.copyButtonEffect = buttonType;
             
@@ -1025,13 +1052,7 @@ createApp({
             
             // Then copy it with the selected button effect
             if (this.selectedResult) {
-                // For times over 1 minute, copy in seconds format
                 let textToCopy = this.selectedResult.time;
-                
-                // Check if original time is over 60 seconds
-                if (this.selectedResult.originalTime && this.selectedResult.originalTime >= 60) {
-                    textToCopy = this.formatTimeAsSeconds(this.selectedResult.originalTime, this.settings.highPrecisionTime);
-                }
                 
                 navigator.clipboard.writeText(textToCopy).then(() => {
                     console.log(`Result from history [${textToCopy}] copied to clipboard via double-click.`);
@@ -1063,9 +1084,23 @@ createApp({
             this.showSettings = true;
             this.apiTestResult = null;
             this.showApiKey = false; // Reset visibility when opening settings
+            this.competitionIdError = ''; // Reset validation error
             
             // Set the API endpoint based on provider selection
             this.updateApiEndpoint();
+        },
+        
+        validateCompetitionId() {
+            const id = this.tempSettings.competitionId || '';
+            const alphanumericRegex = /^[a-zA-Z0-9]+$/;
+            
+            this.competitionIdError = '';
+            
+            if (id.length > 0 && id.length < 6) {
+                this.competitionIdError = 'Competition ID must be at least 6 characters long';
+            } else if (id.length > 0 && !alphanumericRegex.test(id)) {
+                this.competitionIdError = 'Competition ID can only contain letters and numbers';
+            }
         },
         
         updateApiEndpoint() {
@@ -1087,24 +1122,8 @@ createApp({
             const timeStr = data.time || '';
             const highPrecision = (apiSettings || this.settings).highPrecisionTime;
             
-            // Calculate time_no_decimal based on originalTime
-            let timeNoDecimal;
-            if (data.originalTime && data.originalTime >= 60) {
-                // For times over 1 minute, convert to total seconds with milliseconds/centiseconds
-                const totalSeconds = Math.floor(data.originalTime);
-                if (highPrecision) {
-                    // High precision: 3 decimal places (milliseconds)
-                    const milliseconds = Math.round((data.originalTime % 1) * 1000);
-                    timeNoDecimal = totalSeconds.toString() + milliseconds.toString().padStart(3, '0');
-                } else {
-                    // Normal precision: 2 decimal places (centiseconds)
-                    const centiseconds = Math.round((data.originalTime % 1) * 100);
-                    timeNoDecimal = totalSeconds.toString() + centiseconds.toString().padStart(2, '0');
-                }
-            } else {
-                // For times under 1 minute, use the old format (remove colons and decimal points)
-                timeNoDecimal = timeStr.replace(/[:.]/g, '');
-            }
+            // Calculate time_no_decimal - remove decimal points from seconds format
+            let timeNoDecimal = timeStr.replace(/\./g, '');
             
             const decimals = highPrecision ? 3 : 2;
             const apiKey = (apiSettings || this.settings).apiKey || '';
@@ -1134,6 +1153,11 @@ createApp({
             this.updateDisplayPrecision();
             this.showSettings = false;
             this.addDebugMessage('Settings saved successfully');
+            
+            // Send initial timer data to server if competition ID is set
+            if (this.settings.competitionId) {
+                this.updateTimerDataServer();
+            }
         },
         
         cancelSettings() {
@@ -1233,12 +1257,23 @@ createApp({
                     this.displayTime = this.formatTime(elapsed, this.settings.highPrecisionTime);
                 }
             }, 10); // Update every 10ms for smooth display
+            
+            // Also update server every second for XML endpoint
+            this.serverUpdateInterval = setInterval(() => {
+                if (this.isRunning) {
+                    this.updateTimerDataServer();
+                }
+            }, 1000); // Update server every second
         },
         
         stopRunningTimer() {
             if (this.runningTimerInterval) {
                 clearInterval(this.runningTimerInterval);
                 this.runningTimerInterval = null;
+            }
+            if (this.serverUpdateInterval) {
+                clearInterval(this.serverUpdateInterval);
+                this.serverUpdateInterval = null;
             }
         },
         
@@ -1439,6 +1474,72 @@ createApp({
 
             // Initial status log
             this.addDebugMessage(`PWA: Initial status - ${this.isOnline ? 'online' : 'offline'}`);
+        },
+        
+        updateTimerDataServer() {
+            // Only update if competition ID is set
+            if (!this.settings.competitionId) {
+                return;
+            }
+            
+            const timerRunning = localStorage.getItem('timerRunning') === 'true' || this.isRunning;
+            
+            // Use current display time if running, otherwise use latest result
+            let time;
+            if (this.isRunning && this.displayTime !== 'Ready') {
+                time = this.displayTime;
+            } else {
+                time = this.results.length > 0 ? this.results[0].time : '0.00';
+            }
+            
+            const timerData = {
+                time: time,
+                running: timerRunning ? '1' : '0'
+            };
+            
+            console.log(`🔄 updateTimerDataServer: isRunning=${this.isRunning}, localStorage=${localStorage.getItem('timerRunning')}, time=${time}, running=${timerData.running}`);
+            
+            // Send to server function for shared access across all browsers/IPs
+            this.sendTimerDataToServer(timerData);
+        },
+        
+        async sendTimerDataToServer(timerData) {
+            // Create immediate shareable URL with embedded data
+            const dataForUrl = {
+                competitionId: this.settings.competitionId,
+                time: timerData.time,
+                running: timerData.running,
+                timestamp: new Date().toISOString()
+            };
+            
+            const dataString = btoa(JSON.stringify(dataForUrl));
+            const shareableUrl = `${window.location.origin}/.netlify/functions/xml?competitionId=${this.settings.competitionId}&data=${dataString}`;
+            
+            console.log('🔗 Live XML URL:', shareableUrl);
+            console.log('📊 Timer data:', timerData);
+            
+            // Also try to store on server (but don't depend on it)
+            try {
+                const response = await fetch('/.netlify/functions/store-timer-data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        competitionId: this.settings.competitionId,
+                        time: timerData.time,
+                        running: timerData.running
+                    })
+                });
+                
+                if (response.ok) {
+                    console.log('✅ Server storage succeeded');
+                } else {
+                    console.log('⚠️ Server storage failed, using URL fallback');
+                }
+            } catch (error) {
+                console.log('⚠️ Server error, using URL fallback:', error.message);
+            }
         }
     }
 }).mount('#app');

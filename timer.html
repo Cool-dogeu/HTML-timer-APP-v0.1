@@ -38,6 +38,10 @@
                 <h1>Agility Timer Online v1.3</h1>
             </div>
             <div class="connection-status">
+                <button @click="confirmRefresh" class="btn btn-secondary btn-small">
+                    <i class="material-icons">refresh</i>
+                    Refresh
+                </button>
                 <span class="status-led" :class="statusLedClass"></span>
                 <span>{{ connectionStatus }}</span>
                 <span v-if="!isOnline" class="offline-indicator">
@@ -197,11 +201,40 @@
             </div>
         </div>
 
+        <!-- Refresh Confirmation Modal -->
+        <div v-if="showRefreshConfirmation" class="modal-backdrop" @click="cancelRefresh">
+            <div class="modal confirmation-modal" @click.stop>
+                <h2>Refresh Page</h2>
+                <p v-if="isRunning"><strong>Warning:</strong> The timer is currently running. Refreshing will stop the current run and the time will be lost.</p>
+                <p v-else>Are you sure you want to refresh the page? Any unsaved changes will be lost.</p>
+                <div class="modal-buttons">
+                    <button @click="refreshPage" class="btn btn-danger">{{ isRunning ? 'Stop Timer & Refresh' : 'Refresh Page' }}</button>
+                    <button @click="cancelRefresh" class="btn btn-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Settings Modal -->
         <div v-if="showSettings" class="modal-backdrop" @click="cancelSettings">
             <div class="modal settings-modal" @click.stop>
                 <h2>Settings</h2>
                 
+                <div class="settings-section">
+                    <h3>Competition Settings</h3>
+                    <div class="form-group">
+                        <label for="competitionId">Competition ID</label>
+                        <input type="text" id="competitionId" v-model="tempSettings.competitionId" class="form-control" 
+                               placeholder="Enter competition ID (min 6 alphanumeric characters)"
+                               maxlength="20"
+                               @input="validateCompetitionId">
+                        <small class="form-help">
+                            Competition ID must be at least 6 characters long and contain only letters and numbers.
+                            This enables access to XML endpoint at /[competition_id]/xml
+                        </small>
+                        <div v-if="competitionIdError" class="form-error">{{ competitionIdError }}</div>
+                    </div>
+                </div>
+
                 <div class="settings-section">
                     <h3>API Integration</h3>
                     <div class="form-group">
