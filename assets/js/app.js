@@ -30,7 +30,8 @@ class ProtocolAlge {
             return null;
         }
 
-        const [userString, channelString, timeString, statusString] = parts;
+        const [userString, channelString, timeStringRaw, statusString] = parts;
+        const timeString = timeStringRaw.trim(); // Remove leading/trailing spaces
 
         const userId = parseInt(userString);
         const status = parseInt(statusString);
@@ -87,7 +88,7 @@ class ProtocolAlge {
         } else if (deltaTimeRegex.test(timeString)) {
             mode = ProtocolAlge.TimeMode.DELTA;
             deltaTime = parseFloat(timeString);
-            console.debug(`ParsePacket: Delta time parsing - timeString: '${timeString}', parsed deltaTime: ${deltaTime}`);
+            console.debug(`ParsePacket: Delta time parsing - raw: '${timeStringRaw}', trimmed: '${timeString}', parsed deltaTime: ${deltaTime}`);
         } else {
             console.debug(`ParsePacket: Invalid time format: '${timeString}'`);
             return null;
