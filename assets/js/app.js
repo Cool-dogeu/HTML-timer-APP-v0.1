@@ -65,7 +65,7 @@ class ProtocolAlge {
         // Parse time (absolute format: HH:MM:SS.FFFF or HH:MM:SS:FFFF, delta format: seconds.FFFF)
         const absoluteTimeRegex1 = /^\d{2}:\d{2}:\d{2}\.\d{4}$/;  // 12:01:24.2050
         const absoluteTimeRegex2 = /^\d{2}:\d{2}:\d{2}:\d{4}$/;   // 12:01:32:1250
-        const deltaTimeRegex = /^\d{1,9}(\.\d{4})?$/;
+        const deltaTimeRegex = /^\d{1,9}(\.\d{1,4})?$/;
 
         let mode, absoluteTime = null, deltaTime = 0;
 
@@ -87,6 +87,7 @@ class ProtocolAlge {
         } else if (deltaTimeRegex.test(timeString)) {
             mode = ProtocolAlge.TimeMode.DELTA;
             deltaTime = parseFloat(timeString);
+            console.debug(`ParsePacket: Delta time parsing - timeString: '${timeString}', parsed deltaTime: ${deltaTime}`);
         } else {
             console.debug(`ParsePacket: Invalid time format: '${timeString}'`);
             return null;
@@ -620,6 +621,7 @@ createApp({
         
         processFinishSignal(packet) {
             console.log('🛑 processFinishSignal called - stopping timer');
+            console.log('📊 Packet details:', { deltaTime: packet.deltaTime, originalTimeString: packet.originalTimeString, channelString: packet.originalChannelString });
             this.isRunning = false;
             this.stopRunningTimer(); // Stop real-time display
             
@@ -630,6 +632,7 @@ createApp({
             
             // Use delta time directly (no calculation needed)
             const resultTime = packet.deltaTime;
+            console.log('⏱️ Final resultTime:', resultTime);
             
             this.handleNewResult(resultTime);
             
