@@ -254,8 +254,7 @@
                 Test Long Time (>1min)
               </button>
               <span class="test-status"
-                >{{ testRunning ? 'Running automated tests...' : 'Test runner
-                stopped' }}</span
+                >{{ testRunning ? 'Running automated tests...' : 'Test runner stopped' }}</span
               >
             </div>
           </div>
@@ -531,47 +530,6 @@
                     >Timer Finished (Result)</label
                   >
                 </div>
-<<<<<<< Updated upstream
-                <div class="results-table-container">
-                    <table class="results-table">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Result</th>
-                                <th>Timestamp</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="(result, index) in results" :key="index" 
-                                @click="selectResult(index)" 
-                                @dblclick="copyResultRow(index)"
-                                :class="{ selected: selectedResultIndex === index }"
-                                title="Click to select, double-click to copy">
-                                <td>{{ results.length - index }}</td>
-                                <td :class="'result-' + result.status">{{ formatResultDisplay(result) }}</td>
-                                <td>{{ result.timestamp }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                
-                <div class="results-actions">
-                    <button @click="exportResults" class="btn btn-secondary" :disabled="results.length === 0">
-                        <i class="material-icons">download</i>
-                        Export CSV
-                    </button>
-                    <button @click="setupJsonExport" class="btn btn-secondary" :class="{ 'btn-success': jsonFileHandle }">
-                        <i class="material-icons">{{ jsonFileHandle ? 'check_circle' : 'save' }}</i>
-                        {{ jsonFileHandle ? 'JSON Active' : 'SAVE to JSON' }}
-                    </button>
-                    <button @click="confirmClearResults" class="btn btn-danger" :disabled="results.length === 0">
-                        <i class="material-icons">clear_all</i>
-                        Clear Results
-                    </button>
-                </div>
-            </section>
-        </main>
-=======
                 <input
                   type="number"
                   id="statusFinished"
