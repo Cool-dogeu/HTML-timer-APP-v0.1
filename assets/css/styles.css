@@ -12,6 +12,11 @@ body {
     overflow: hidden; /* Prevent main page scroll */
 }
 
+/* Hide content until Vue is ready */
+[v-cloak] {
+    display: none !important;
+}
+
 #app {
     height: 100vh; /* Exact viewport height */
     display: flex;
