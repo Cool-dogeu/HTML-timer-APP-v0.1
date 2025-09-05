@@ -1,102 +1,537 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cool-Dog.eu Agility Timer</title>
-    
+
     <!-- PWA Meta Tags -->
-    <meta name="application-name" content="Agility Timer">
-    <meta name="description" content="Professional agility timing system with hardware integration">
-    <meta name="theme-color" content="#2196F3">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Agility Timer">
-    <meta name="msapplication-TileColor" content="#2196F3">
-    <meta name="msapplication-tap-highlight" content="no">
-    
+    <meta name="application-name" content="Agility Timer" />
+    <meta
+      name="description"
+      content="Professional agility timing system with hardware integration"
+    />
+    <meta name="theme-color" content="#2196F3" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Agility Timer" />
+    <meta name="msapplication-TileColor" content="#2196F3" />
+    <meta name="msapplication-tap-highlight" content="no" />
+
     <!-- Icons -->
-    <link rel="icon" type="image/png" href="assets/images/logo.png">
-    <link rel="shortcut icon" type="image/png" href="assets/images/logo.png">
-    <link rel="apple-touch-icon" href="assets/images/logo.png">
-    <link rel="apple-touch-icon" sizes="152x152" href="assets/images/logo.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="assets/images/logo.png">
-    <link rel="apple-touch-icon" sizes="167x167" href="assets/images/logo.png">
-    
+    <link rel="icon" type="image/png" href="assets/images/logo.png" />
+    <link rel="shortcut icon" type="image/png" href="assets/images/logo.png" />
+    <link rel="apple-touch-icon" href="assets/images/logo.png" />
+    <link
+      rel="apple-touch-icon"
+      sizes="152x152"
+      href="assets/images/logo.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="assets/images/logo.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="167x167"
+      href="assets/images/logo.png"
+    />
+
     <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="assets/css/styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-</head>
-<body>
+    <link rel="manifest" href="manifest.json" />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
     <div id="app">
-        <header class="app-header">
-            <div class="logo-container">
-                <img src="assets/images/logo.png" alt="CoolDog" class="logo">
-                <h1>Agility Timer Online v1.7</h1>
+      <header class="app-header">
+        <div class="logo-container">
+          <img src="assets/images/logo.png" alt="CoolDog" class="logo" />
+          <h1>Agility Timer Online v1.8</h1>
+        </div>
+        <div class="connection-status">
+          <button @click="confirmRefresh" class="btn btn-secondary btn-small">
+            <i class="material-icons">refresh</i>
+            Refresh
+          </button>
+          <span class="status-led" :class="statusLedClass"></span>
+          <span>{{ connectionStatus }}</span>
+          <span v-if="!isOnline" class="offline-indicator">
+            <i class="material-icons">cloud_off</i>
+            OFFLINE
+          </span>
+          <img
+            src="assets/images/logo.png"
+            alt="CoolDog"
+            class="header-logo"
+            @click="openWebsite"
+          />
+        </div>
+      </header>
+
+      <main class="main-container">
+        <section class="timer-section">
+          <div class="section-header">
+            <h2>Latest Result</h2>
+            <button
+              @click="copyLatestResult"
+              class="btn btn-secondary"
+              :class="{ 'copy-success': copyButtonEffect === 'latest' }"
+            >
+              <i class="material-icons"
+                >{{ copyButtonEffect === 'latest' ? 'check' : 'content_copy'
+                }}</i
+              >
+              {{ copyButtonEffect === 'latest' ? 'Copied!' : 'Copy' }}
+            </button>
+          </div>
+          <div
+            class="timer-display"
+            :class="{ running: isRunning }"
+            @dblclick="copyLatestResult"
+            title="Double-click to copy"
+          >
+            <div class="timer-value">{{ displayTime }}</div>
+            <div class="timer-status">{{ timerStatus }}</div>
+          </div>
+
+          <div class="precision-toggle">
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                v-model="settings.highPrecisionTime"
+                @change="updateDisplayPrecision"
+              />
+              High Precision (3 decimals)
+            </label>
+          </div>
+
+          <div class="control-buttons">
+            <button
+              @click="toggleConnection"
+              class="btn"
+              :class="{ 'btn-danger': isConnected, 'btn-primary': !isConnected }"
+            >
+              <i class="material-icons"
+                >{{ isConnected ? 'usb_off' : 'usb' }}</i
+              >
+              {{ isConnected ? 'Disconnect' : 'Connect' }}
+            </button>
+            <button @click="openSettings" class="btn btn-secondary">
+              <i class="material-icons">settings</i>
+              Settings
+            </button>
+            <button @click="openInfo" class="btn btn-secondary">
+              <i class="material-icons">info</i>
+              Info
+            </button>
+          </div>
+        </section>
+
+        <section class="results-section">
+          <div class="section-header">
+            <h2>Result History</h2>
+            <button
+              @click="copySelectedResult"
+              class="btn btn-secondary"
+              :class="{ 'copy-success': copyButtonEffect === 'selected' }"
+              :disabled="!selectedResult"
+            >
+              <i class="material-icons"
+                >{{ copyButtonEffect === 'selected' ? 'check' : 'content_copy'
+                }}</i
+              >
+              {{ copyButtonEffect === 'selected' ? 'Copied!' : 'Copy Selected'
+              }}
+            </button>
+          </div>
+          <div class="results-table-container">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Result</th>
+                  <th>Timestamp</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(result, index) in results"
+                  :key="index"
+                  @click="selectResult(index)"
+                  @dblclick="copyResultRow(index)"
+                  :class="{ selected: selectedResultIndex === index }"
+                  title="Click to select, double-click to copy"
+                >
+                  <td>{{ results.length - index }}</td>
+                  <td :class="'result-' + result.status">
+                    {{ formatResultDisplay(result) }}
+                  </td>
+                  <td>{{ result.timestamp }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="results-actions">
+            <button
+              @click="exportResults"
+              class="btn btn-secondary"
+              :disabled="results.length === 0"
+            >
+              <i class="material-icons">download</i>
+              Export CSV
+            </button>
+            <button
+              @click="setupJsonExport"
+              class="btn btn-secondary"
+              :class="{ 'btn-success': jsonFileHandle }"
+            >
+              <i class="material-icons"
+                >{{ jsonFileHandle ? 'check_circle' : 'save' }}</i
+              >
+              {{ jsonFileHandle ? 'JSON Active' : 'SAVE to JSON' }}
+            </button>
+            <button
+              @click="confirmClearResults"
+              class="btn btn-danger"
+              :disabled="results.length === 0"
+            >
+              <i class="material-icons">clear_all</i>
+              Clear Results
+            </button>
+          </div>
+        </section>
+      </main>
+
+      <!-- Debug Console -->
+      <div v-if="showDebugConsole" class="debug-console">
+        <div class="debug-header">
+          <h3>Debug Console</h3>
+          <button @click="clearDebugConsole" class="btn btn-small">
+            Clear
+          </button>
+        </div>
+        <div class="debug-content">
+          <div class="debug-section">
+            <h4>Test Runner:</h4>
+            <div class="test-controls">
+              <button
+                @click="startTestRuns"
+                :disabled="testRunning"
+                class="btn btn-small btn-primary"
+              >
+                Start Test Runs
+              </button>
+              <button
+                @click="stopTestRuns"
+                :disabled="!testRunning"
+                class="btn btn-small btn-danger"
+              >
+                Stop Test Runs
+              </button>
+              <button
+                @click="simulateRTTestRun"
+                :disabled="isRunning"
+                class="btn btn-small btn-secondary"
+              >
+                Test RT Signal
+              </button>
+              <button
+                @click="simulateLongTimeTest"
+                :disabled="isRunning"
+                class="btn btn-small btn-secondary"
+              >
+                Test Long Time (>1min)
+              </button>
+              <span class="test-status"
+                >{{ testRunning ? 'Running automated tests...' : 'Test runner
+                stopped' }}</span
+              >
             </div>
-            <div class="connection-status">
-                <button @click="confirmRefresh" class="btn btn-secondary btn-small">
-                    <i class="material-icons">refresh</i>
-                    Refresh
+          </div>
+          <div class="debug-section">
+            <h4>Raw Data Buffer (last 1000 chars):</h4>
+            <pre>{{ rawDataBuffer || 'No data received yet...' }}</pre>
+          </div>
+          <div class="debug-section">
+            <h4>Debug Messages:</h4>
+            <div class="debug-messages">
+              <div
+                v-for="(msg, index) in debugMessages"
+                :key="index"
+                class="debug-message"
+              >
+                {{ msg }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Connection Lost Modal -->
+      <div v-if="showConnectionLostModal" class="modal-backdrop">
+        <div class="modal confirmation-modal" @click.stop>
+          <h2>Connection Lost</h2>
+          <p>
+            The connection to your timing device has been lost. This usually
+            happens when the device is unplugged or there's a communication
+            error.
+          </p>
+          <div class="modal-buttons">
+            <button @click="reconnectDevice" class="btn btn-primary">
+              <i class="material-icons">usb</i>
+              Reconnect
+            </button>
+            <button
+              @click="showConnectionLostModal = false"
+              class="btn btn-secondary"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Clear Results Confirmation Modal -->
+      <div
+        v-if="showClearConfirmation"
+        class="modal-backdrop"
+        @click="cancelClearResults"
+      >
+        <div class="modal confirmation-modal" @click.stop>
+          <h2>Clear Results</h2>
+          <p>
+            Are you sure you want to clear all results? This action cannot be
+            undone.
+          </p>
+          <div class="modal-buttons">
+            <button @click="clearResults" class="btn btn-danger">
+              Clear All Results
+            </button>
+            <button @click="cancelClearResults" class="btn btn-secondary">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Refresh Confirmation Modal -->
+      <div
+        v-if="showRefreshConfirmation"
+        class="modal-backdrop"
+        @click="cancelRefresh"
+      >
+        <div class="modal confirmation-modal" @click.stop>
+          <h2>Refresh Page</h2>
+          <p v-if="isRunning">
+            <strong>Warning:</strong> The timer is currently running. Refreshing
+            will stop the current run and the time will be lost.
+          </p>
+          <p v-else>
+            Are you sure you want to refresh the page? Any unsaved changes will
+            be lost.
+          </p>
+          <div class="modal-buttons">
+            <button @click="refreshPage" class="btn btn-danger">
+              {{ isRunning ? 'Stop Timer & Refresh' : 'Refresh Page' }}
+            </button>
+            <button @click="cancelRefresh" class="btn btn-secondary">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Modal -->
+      <div v-if="showSettings" class="modal-backdrop" @click="cancelSettings">
+        <div class="modal settings-modal" @click.stop>
+          <h2>Settings</h2>
+
+          <div class="settings-section">
+            <h3>Competition Settings</h3>
+            <div class="form-group">
+              <label for="competitionId">Competition ID</label>
+              <input
+                type="text"
+                id="competitionId"
+                v-model="tempSettings.competitionId"
+                class="form-control"
+                placeholder="Enter competition ID (min 6 alphanumeric characters)"
+                maxlength="20"
+                @input="validateCompetitionId"
+              />
+              <small class="form-help">
+                Competition ID must be at least 6 characters long and contain
+                only letters and numbers. This enables access to XML endpoint at
+                /[competition_id]/xml
+              </small>
+              <div v-if="competitionIdError" class="form-error">
+                {{ competitionIdError }}
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>API Integration</h3>
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="tempSettings.apiEnabled" />
+                Enable API Integration
+              </label>
+            </div>
+
+            <div v-if="tempSettings.apiEnabled" class="api-settings">
+              <div class="form-group">
+                <label for="apiProvider">API Provider</label>
+                <select
+                  id="apiProvider"
+                  v-model="tempSettings.apiProvider"
+                  class="form-control"
+                  @change="updateApiEndpoint"
+                >
+                  <option value="agigames">agigames.cz</option>
+                  <option value="other">Other (Custom URL)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="apiEndpoint">API Endpoint URL</label>
+                <input
+                  type="text"
+                  id="apiEndpoint"
+                  v-model="tempSettings.apiEndpoint"
+                  class="form-control"
+                  :placeholder="tempSettings.apiProvider === 'agigames' ? 'URL will be auto-generated' : 'https://example.com/api?apikey=[key]&time=[time_no_decimal]&status=[status]'"
+                  :readonly="tempSettings.apiProvider === 'agigames'"
+                  :class="{ 'readonly': tempSettings.apiProvider === 'agigames' }"
+                />
+                <small class="form-help">
+                  <span v-if="tempSettings.apiProvider === 'agigames'">
+                    Using agigames.cz preset with parameters:
+                    <strong>[key]</strong>, <strong>[status]</strong>,
+                    <strong>[time_no_decimal]</strong>,
+                    <strong>[decimals]</strong>
+                  </span>
+                  <span v-else>
+                    You can use placeholders: <strong>[key]</strong>,
+                    <strong>[time]</strong>, <strong>[time_no_decimal]</strong>,
+                    <strong>[decimals]</strong>, <strong>[status]</strong>,
+                    <strong>[timestamp]</strong>
+                  </span>
+                </small>
+              </div>
+
+              <div class="form-group">
+                <label for="apiMethod">HTTP Method</label>
+                <select
+                  id="apiMethod"
+                  v-model="tempSettings.apiMethod"
+                  class="form-control"
+                >
+                  <option value="POST">POST</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="apiKey">API Key</label>
+                <div style="position: relative">
+                  <input
+                    :type="showApiKey ? 'text' : 'password'"
+                    id="apiKey"
+                    v-model="tempSettings.apiKey"
+                    class="form-control"
+                    placeholder="Enter your API key"
+                    style="padding-right: 40px"
+                  />
+                  <button
+                    type="button"
+                    @click="showApiKey = !showApiKey"
+                    style="
+                      position: absolute;
+                      right: 10px;
+                      top: 50%;
+                      transform: translateY(-50%);
+                      background: transparent;
+                      border: none;
+                      cursor: pointer;
+                      padding: 5px;
+                    "
+                  >
+                    <span v-if="showApiKey">🙈</span>
+                    <span v-else>👁️</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <button
+                  @click="testApiConnection"
+                  class="btn btn-secondary"
+                  :disabled="!tempSettings.apiEndpoint || apiTestInProgress"
+                >
+                  <i class="material-icons"
+                    >{{ apiTestInProgress ? 'hourglass_empty' : 'wifi_tethering'
+                    }}</i
+                  >
+                  {{ apiTestInProgress ? 'Testing...' : 'Test Connection' }}
                 </button>
-                <span class="status-led" :class="statusLedClass"></span>
-                <span>{{ connectionStatus }}</span>
-                <span v-if="!isOnline" class="offline-indicator">
-                    <i class="material-icons">cloud_off</i>
-                    OFFLINE
+                <span
+                  v-if="apiTestResult"
+                  class="api-test-result"
+                  :class="{ 'success': apiTestResult.success, 'error': !apiTestResult.success }"
+                >
+                  {{ apiTestResult.message }}
                 </span>
-                <img src="assets/images/logo.png" alt="CoolDog" class="header-logo" @click="openWebsite">
-            </div>
-        </header>
+              </div>
 
-        <main class="main-container">
-            <section class="timer-section">
-                <div class="section-header">
-                    <h2>Latest Result</h2>
-                    <button @click="copyLatestResult" class="btn btn-secondary" :class="{ 'copy-success': copyButtonEffect === 'latest' }">
-                        <i class="material-icons">{{ copyButtonEffect === 'latest' ? 'check' : 'content_copy' }}</i>
-                        {{ copyButtonEffect === 'latest' ? 'Copied!' : 'Copy' }}
-                    </button>
+              <h4>Status Code Mapping</h4>
+              <div class="form-group">
+                <div style="display: flex; align-items: center; gap: 10px">
+                  <input
+                    type="checkbox"
+                    id="enableStartedApi"
+                    v-model="tempSettings.apiStartedEnabled"
+                    class="form-control"
+                    style="width: auto"
+                  />
+                  <label for="enableStartedApi" style="margin: 0"
+                    >Timer Started (Dog begins)</label
+                  >
                 </div>
-                <div class="timer-display" :class="{ running: isRunning }" @dblclick="copyLatestResult" title="Double-click to copy">
-                    <div class="timer-value">{{ displayTime }}</div>
-                    <div class="timer-status">{{ timerStatus }}</div>
-                </div>
-                
-                <div class="precision-toggle">
-                    <label class="checkbox-label">
-                        <input type="checkbox" v-model="settings.highPrecisionTime" @change="updateDisplayPrecision">
-                        High Precision (3 decimals)
-                    </label>
-                </div>
-                
-                <div class="control-buttons">
-                    <button @click="toggleConnection" class="btn" :class="{ 'btn-danger': isConnected, 'btn-primary': !isConnected }">
-                        <i class="material-icons">{{ isConnected ? 'usb_off' : 'usb' }}</i>
-                        {{ isConnected ? 'Disconnect' : 'Connect' }}
-                    </button>
-                    <button @click="openSettings" class="btn btn-secondary">
-                        <i class="material-icons">settings</i>
-                        Settings
-                    </button>
-                    <button @click="openInfo" class="btn btn-secondary">
-                        <i class="material-icons">info</i>
-                        Info
-                    </button>
-                </div>
-            </section>
+                <input
+                  type="number"
+                  id="statusStarted"
+                  v-model="tempSettings.statusMappings.started"
+                  class="form-control"
+                  placeholder="3"
+                  :disabled="!tempSettings.apiStartedEnabled"
+                />
+              </div>
 
-            <section class="results-section">
-                <div class="section-header">
-                    <h2>Result History</h2>
-                    <button @click="copySelectedResult" class="btn btn-secondary" :class="{ 'copy-success': copyButtonEffect === 'selected' }" :disabled="!selectedResult">
-                        <i class="material-icons">{{ copyButtonEffect === 'selected' ? 'check' : 'content_copy' }}</i>
-                        {{ copyButtonEffect === 'selected' ? 'Copied!' : 'Copy Selected' }}
-                    </button>
+              <div class="form-group">
+                <div style="display: flex; align-items: center; gap: 10px">
+                  <input
+                    type="checkbox"
+                    id="enableFinishedApi"
+                    v-model="tempSettings.apiFinishedEnabled"
+                    class="form-control"
+                    style="width: auto"
+                  />
+                  <label for="enableFinishedApi" style="margin: 0"
+                    >Timer Finished (Result)</label
+                  >
                 </div>
+<<<<<<< Updated upstream
                 <div class="results-table-container">
                     <table class="results-table">
                         <thead>
@@ -132,266 +567,162 @@
                 </div>
             </section>
         </main>
+=======
+                <input
+                  type="number"
+                  id="statusFinished"
+                  v-model="tempSettings.statusMappings.finished"
+                  class="form-control"
+                  placeholder="4"
+                  :disabled="!tempSettings.apiFinishedEnabled"
+                />
+              </div>
+            </div>
+          </div>
+>>>>>>> Stashed changes
 
-        <!-- Debug Console -->
-        <div v-if="showDebugConsole" class="debug-console">
-            <div class="debug-header">
-                <h3>Debug Console</h3>
-                <button @click="clearDebugConsole" class="btn btn-small">Clear</button>
-            </div>
-            <div class="debug-content">
-                <div class="debug-section">
-                    <h4>Test Runner:</h4>
-                    <div class="test-controls">
-                        <button @click="startTestRuns" :disabled="testRunning" class="btn btn-small btn-primary">
-                            Start Test Runs
-                        </button>
-                        <button @click="stopTestRuns" :disabled="!testRunning" class="btn btn-small btn-danger">
-                            Stop Test Runs
-                        </button>
-                        <button @click="simulateRTTestRun" :disabled="isRunning" class="btn btn-small btn-secondary">
-                            Test RT Signal
-                        </button>
-                        <button @click="simulateLongTimeTest" :disabled="isRunning" class="btn btn-small btn-secondary">
-                            Test Long Time (>1min)
-                        </button>
-                        <span class="test-status">{{ testRunning ? 'Running automated tests...' : 'Test runner stopped' }}</span>
-                    </div>
-                </div>
-                <div class="debug-section">
-                    <h4>Raw Data Buffer (last 1000 chars):</h4>
-                    <pre>{{ rawDataBuffer || 'No data received yet...' }}</pre>
-                </div>
-                <div class="debug-section">
-                    <h4>Debug Messages:</h4>
-                    <div class="debug-messages">
-                        <div v-for="(msg, index) in debugMessages" :key="index" class="debug-message">
-                            {{ msg }}
-                        </div>
-                    </div>
-                </div>
-            </div>
+          <div class="modal-buttons">
+            <button @click="saveSettings" class="btn btn-primary">
+              Save Settings
+            </button>
+            <button @click="cancelSettings" class="btn btn-secondary">
+              Cancel
+            </button>
+          </div>
         </div>
+      </div>
 
+      <!-- Info Modal -->
+      <div v-if="showInfo" class="modal-backdrop" @click="cancelInfo">
+        <div class="modal info-modal" @click.stop>
+          <h1>Agility Timer Online - Quick Guide</h1>
 
-        <!-- Connection Lost Modal -->
-        <div v-if="showConnectionLostModal" class="modal-backdrop">
-            <div class="modal confirmation-modal" @click.stop>
-                <h2>Connection Lost</h2>
-                <p>The connection to your timing device has been lost. This usually happens when the device is unplugged or there's a communication error.</p>
-                <div class="modal-buttons">
-                    <button @click="reconnectDevice" class="btn btn-primary">
-                        <i class="material-icons">usb</i>
-                        Reconnect
-                    </button>
-                    <button @click="showConnectionLostModal = false" class="btn btn-secondary">Close</button>
-                </div>
+          <h2>Supported browsers and timers</h2>
+          <p>
+            This app works on Chrome and Edge. Supported timers are FDS T-BOX
+            and ALGE TDC8001. TIMY3 support coming soon. FDS T-BOX may require
+            Windows drivers: you can download them from
+            <a href="https://fdstiming.com/download/"
+              >https://fdstiming.com/download/</a
+            >. ALGE Timy requires Windows drivers:
+            <a
+              href="https://alge-timing.com/alge/download/driver/TimyUSBDriver.exe"
+              >download here</a
+            >.
+          </p>
+
+          <div class="important-notice">
+            <strong>Important:</strong> When using Agility Timer Online, please
+            disable power saving features on your computer. If the computer goes
+            to sleep, all connected USB devices (including the timer) will be
+            disconnected.
+            <ul>
+              <li>disable sleep mode</li>
+              <li>do not allow USB ports to power down</li>
+              <li>disable hard disk sleep</li>
+              <li>set the power plan to High Performance</li>
+            </ul>
+            <div>
+              <strong>Windows:</strong> Control Panel → Power Options → Change
+              plan settings → set Sleep to Never. In Device Manager, under USB
+              controllers, uncheck "Allow the computer to turn off this device
+              to save power".
             </div>
-        </div>
-
-        <!-- Clear Results Confirmation Modal -->
-        <div v-if="showClearConfirmation" class="modal-backdrop" @click="cancelClearResults">
-            <div class="modal confirmation-modal" @click.stop>
-                <h2>Clear Results</h2>
-                <p>Are you sure you want to clear all results? This action cannot be undone.</p>
-                <div class="modal-buttons">
-                    <button @click="clearResults" class="btn btn-danger">Clear All Results</button>
-                    <button @click="cancelClearResults" class="btn btn-secondary">Cancel</button>
-                </div>
+            <div>
+              <strong>macOS:</strong> System Settings → Battery → disable
+              computer sleep when plugged in. Enable the option to prevent
+              automatic sleep when the display is off.
             </div>
-        </div>
-
-        <!-- Refresh Confirmation Modal -->
-        <div v-if="showRefreshConfirmation" class="modal-backdrop" @click="cancelRefresh">
-            <div class="modal confirmation-modal" @click.stop>
-                <h2>Refresh Page</h2>
-                <p v-if="isRunning"><strong>Warning:</strong> The timer is currently running. Refreshing will stop the current run and the time will be lost.</p>
-                <p v-else>Are you sure you want to refresh the page? Any unsaved changes will be lost.</p>
-                <div class="modal-buttons">
-                    <button @click="refreshPage" class="btn btn-danger">{{ isRunning ? 'Stop Timer & Refresh' : 'Refresh Page' }}</button>
-                    <button @click="cancelRefresh" class="btn btn-secondary">Cancel</button>
-                </div>
+            <div>
+              <strong>Physical Disconnection:</strong> If you physically unplug
+              the USB device, the browser removes it from authorized devices.
+              Auto-reconnection will try to reconnect, but if it fails, you'll
+              need to click the "Connect" button to re-authorize the device.
             </div>
+          </div>
+
+          <h2>What it does</h2>
+          <p>
+            Agility Timer Online connects to your timing device and shows live
+            run times for agility training or competitions. You can save
+            results, export them, or send them to another system using the API.
+          </p>
+
+          <h2>How to use</h2>
+          <ol>
+            <li>
+              <strong>Connect to the timer</strong> - Connect using a USB cable
+              or a USB/serial adapter, then click <em>Connect</em> to link with
+              your device. For FDS T-BOX, make sure the device is set to the
+              ALGE protocol and autotiming mode. The status light will turn
+              green when connected.
+            </li>
+            <li>
+              <strong>Start and view results</strong> - The timer will start
+              automatically when the device sends a start signal. The current
+              time appears in the main display.
+            </li>
+            <li>
+              <strong>Copy results</strong> - Double-click the time or use the
+              <em>Copy</em> button to copy it. In the history table, click a row
+              to select it, then use <em>Copy Selected</em>.
+            </li>
+            <li>
+              <strong>Export or clear results</strong> - Use
+              <em>Export CSV</em> to save all results as a file. Use
+              <em>Clear Results</em> to remove them (confirmation required).
+            </li>
+            <li>
+              <strong>Set precision</strong> - Enable <em>High Precision</em> to
+              show milliseconds.
+            </li>
+            <li>
+              <strong>Settings</strong> - Open <em>Settings</em> to set up API
+              integration. You can enter an endpoint, method, key, and map
+              status codes for start and finish events.
+            </li>
+            <li>
+              <strong>Debug mode</strong> - Click the bug/code button in the
+              corner to open the debug console for test runs and raw data view.
+            </li>
+          </ol>
+
+          <div class="integration-section">
+            <h2>Integration with agigames.cz</h2>
+            <p>
+              If you want to integrate with <strong>agigames.cz</strong>, open
+              the <em>Settings</em> tab, activate the API, and select
+              "agigames.cz" from the provider dropdown.
+            </p>
+            <p>
+              The URL will be auto-configured as:
+              <code
+                >https://new.agigames.cz/api/api_timer.php?apikey=[key]&status=[status]&time=[time_no_decimal]&dec=[decimals]</code
+              >
+            </p>
+            <p>You also need to request a free API key from agigames.cz.</p>
+          </div>
+
+          <div class="modal-buttons">
+            <button @click="cancelInfo" class="btn btn-primary">Close</button>
+          </div>
         </div>
+      </div>
 
-        <!-- Settings Modal -->
-        <div v-if="showSettings" class="modal-backdrop" @click="cancelSettings">
-            <div class="modal settings-modal" @click.stop>
-                <h2>Settings</h2>
-                
-                <div class="settings-section">
-                    <h3>Competition Settings</h3>
-                    <div class="form-group">
-                        <label for="competitionId">Competition ID</label>
-                        <input type="text" id="competitionId" v-model="tempSettings.competitionId" class="form-control" 
-                               placeholder="Enter competition ID (min 6 alphanumeric characters)"
-                               maxlength="20"
-                               @input="validateCompetitionId">
-                        <small class="form-help">
-                            Competition ID must be at least 6 characters long and contain only letters and numbers.
-                            This enables access to XML endpoint at /[competition_id]/xml
-                        </small>
-                        <div v-if="competitionIdError" class="form-error">{{ competitionIdError }}</div>
-                    </div>
-                </div>
-
-                <div class="settings-section">
-                    <h3>API Integration</h3>
-                    <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" v-model="tempSettings.apiEnabled">
-                            Enable API Integration
-                        </label>
-                    </div>
-                    
-                    <div v-if="tempSettings.apiEnabled" class="api-settings">
-                        <div class="form-group">
-                            <label for="apiProvider">API Provider</label>
-                            <select id="apiProvider" v-model="tempSettings.apiProvider" class="form-control" @change="updateApiEndpoint">
-                                <option value="agigames">agigames.cz</option>
-                                <option value="other">Other (Custom URL)</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="apiEndpoint">API Endpoint URL</label>
-                            <input type="text" id="apiEndpoint" v-model="tempSettings.apiEndpoint" class="form-control" 
-                                   :placeholder="tempSettings.apiProvider === 'agigames' ? 'URL will be auto-generated' : 'https://example.com/api?apikey=[key]&time=[time_no_decimal]&status=[status]'"
-                                   :readonly="tempSettings.apiProvider === 'agigames'"
-                                   :class="{ 'readonly': tempSettings.apiProvider === 'agigames' }">
-                            <small class="form-help">
-                                <span v-if="tempSettings.apiProvider === 'agigames'">
-                                    Using agigames.cz preset with parameters: <strong>[key]</strong>, <strong>[status]</strong>, <strong>[time_no_decimal]</strong>, <strong>[decimals]</strong>
-                                </span>
-                                <span v-else>
-                                    You can use placeholders: <strong>[key]</strong>, <strong>[time]</strong>, <strong>[time_no_decimal]</strong>, <strong>[decimals]</strong>, <strong>[status]</strong>, <strong>[timestamp]</strong>
-                                </span>
-                            </small>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="apiMethod">HTTP Method</label>
-                            <select id="apiMethod" v-model="tempSettings.apiMethod" class="form-control">
-                                <option value="POST">POST</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="apiKey">API Key</label>
-                            <div style="position: relative;">
-                                <input :type="showApiKey ? 'text' : 'password'" id="apiKey" v-model="tempSettings.apiKey" class="form-control" placeholder="Enter your API key" style="padding-right: 40px;">
-                                <button type="button" @click="showApiKey = !showApiKey" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; padding: 5px;">
-                                    <span v-if="showApiKey">🙈</span>
-                                    <span v-else>👁️</span>
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <button @click="testApiConnection" class="btn btn-secondary" :disabled="!tempSettings.apiEndpoint || apiTestInProgress">
-                                <i class="material-icons">{{ apiTestInProgress ? 'hourglass_empty' : 'wifi_tethering' }}</i>
-                                {{ apiTestInProgress ? 'Testing...' : 'Test Connection' }}
-                            </button>
-                            <span v-if="apiTestResult" class="api-test-result" :class="{ 'success': apiTestResult.success, 'error': !apiTestResult.success }">
-                                {{ apiTestResult.message }}
-                            </span>
-                        </div>
-
-                        <h4>Status Code Mapping</h4>
-                        <div class="form-group">
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <input type="checkbox" id="enableStartedApi" v-model="tempSettings.apiStartedEnabled" class="form-control" style="width: auto;">
-                                <label for="enableStartedApi" style="margin: 0;">Timer Started (Dog begins)</label>
-                            </div>
-                            <input type="number" id="statusStarted" v-model="tempSettings.statusMappings.started" class="form-control" placeholder="3" :disabled="!tempSettings.apiStartedEnabled">
-                        </div>
-                        
-                        <div class="form-group">
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <input type="checkbox" id="enableFinishedApi" v-model="tempSettings.apiFinishedEnabled" class="form-control" style="width: auto;">
-                                <label for="enableFinishedApi" style="margin: 0;">Timer Finished (Result)</label>
-                            </div>
-                            <input type="number" id="statusFinished" v-model="tempSettings.statusMappings.finished" class="form-control" placeholder="4" :disabled="!tempSettings.apiFinishedEnabled">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-buttons">
-                    <button @click="saveSettings" class="btn btn-primary">Save Settings</button>
-                    <button @click="cancelSettings" class="btn btn-secondary">Cancel</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Info Modal -->
-        <div v-if="showInfo" class="modal-backdrop" @click="cancelInfo">
-            <div class="modal info-modal" @click.stop>
-                <h1>Agility Timer Online - Quick Guide</h1>
-
-                <h2>Supported browsers and timers</h2>
-                <p>This app works on Chrome and Edge. Supported timers are FDS T-BOX and ALGE TDC8001. TIMY3 support coming soon. 
-                    FDS T-BOX may require Windows drivers: you can download them from 
-                <a href="https://fdstiming.com/download/">https://fdstiming.com/download/</a>. 
-                    ALGE Timy requires Windows drivers: 
-                <a href="https://alge-timing.com/alge/download/driver/TimyUSBDriver.exe">download here</a>.</p>
-
-                <div class="important-notice">
-                    <strong>Important:</strong> When using Agility Timer Online, please disable power saving features on your computer.
-                    If the computer goes to sleep, all connected USB devices (including the timer) will be disconnected.
-                    <ul>
-                        <li>disable sleep mode</li>
-                        <li>do not allow USB ports to power down</li>
-                        <li>disable hard disk sleep</li>
-                        <li>set the power plan to High Performance</li>
-                    </ul>
-                    <div>
-                        <strong>Windows:</strong> Control Panel → Power Options → Change plan settings → set Sleep to Never.
-                        In Device Manager, under USB controllers, uncheck "Allow the computer to turn off this device to save power".
-                    </div>
-                    <div>
-                        <strong>macOS:</strong> System Settings → Battery → disable computer sleep when plugged in.
-                        Enable the option to prevent automatic sleep when the display is off.
-                    </div>
-                    <div>
-                        <strong>Physical Disconnection:</strong> If you physically unplug the USB device, the browser removes it from authorized devices. 
-                        Auto-reconnection will try to reconnect, but if it fails, you'll need to click the "Connect" button to re-authorize the device.
-                    </div>
-                </div>
-
-                <h2>What it does</h2>
-                <p>Agility Timer Online connects to your timing device and shows live run times for agility training or competitions. You can save results, export them, or send them to another system using the API.</p>
-
-                <h2>How to use</h2>
-                <ol>
-                    <li><strong>Connect to the timer</strong> - Connect using a USB cable or a USB/serial adapter, then click <em>Connect</em> to link with your device. For FDS T-BOX, make sure the device is set to the ALGE protocol and autotiming mode. The status light will turn green when connected.</li>
-                    <li><strong>Start and view results</strong> - The timer will start automatically when the device sends a start signal. The current time appears in the main display.</li>
-                    <li><strong>Copy results</strong> - Double-click the time or use the <em>Copy</em> button to copy it. In the history table, click a row to select it, then use <em>Copy Selected</em>.</li>
-                    <li><strong>Export or clear results</strong> - Use <em>Export CSV</em> to save all results as a file. Use <em>Clear Results</em> to remove them (confirmation required).</li>
-                    <li><strong>Set precision</strong> - Enable <em>High Precision</em> to show milliseconds.</li>
-                    <li><strong>Settings</strong> - Open <em>Settings</em> to set up API integration. You can enter an endpoint, method, key, and map status codes for start and finish events.</li>
-                    <li><strong>Debug mode</strong> - Click the bug/code button in the corner to open the debug console for test runs and raw data view.</li>
-                </ol>
-
-                <div class="integration-section">
-                    <h2>Integration with agigames.cz</h2>
-                    <p>If you want to integrate with <strong>agigames.cz</strong>, open the <em>Settings</em> tab, activate the API, and select "agigames.cz" from the provider dropdown.</p>
-                    <p>The URL will be auto-configured as: <code>https://new.agigames.cz/api/api_timer.php?apikey=[key]&status=[status]&time=[time_no_decimal]&dec=[decimals]</code></p>
-                    <p>You also need to request a free API key from agigames.cz.</p>
-                </div>
-
-                <div class="modal-buttons">
-                    <button @click="cancelInfo" class="btn btn-primary">Close</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Debug Toggle Button -->
-        <button @click="toggleDebugConsole" class="debug-toggle" :class="{ active: showDebugConsole }" title="Toggle Debug Console">
-            <i class="material-icons">{{ showDebugConsole ? 'bug_report' : 'code' }}</i>
-        </button>
+      <!-- Debug Toggle Button -->
+      <button
+        @click="toggleDebugConsole"
+        class="debug-toggle"
+        :class="{ active: showDebugConsole }"
+        title="Toggle Debug Console"
+      >
+        <i class="material-icons"
+          >{{ showDebugConsole ? 'bug_report' : 'code' }}</i
+        >
+      </button>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
     <script src="assets/js/app.js"></script>
-</body>
+  </body>
 </html>
