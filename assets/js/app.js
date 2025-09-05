@@ -491,6 +491,9 @@ createApp({
     if (this.serverUpdateInterval) {
       clearInterval(this.serverUpdateInterval);
     }
+    if (this.jsonUpdateInterval) {
+      clearInterval(this.jsonUpdateInterval);
+    }
   },
   methods: {
     async toggleConnection() {
