@@ -248,6 +248,15 @@ body {
     color: white;
 }
 
+.btn-success {
+    background: #4caf50;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #45a049;
+}
+
 .btn .material-icons {
     font-size: 20px;
 }

@@ -125,6 +125,10 @@
                         <i class="material-icons">download</i>
                         Export CSV
                     </button>
+                    <button @click="setupJsonExport" class="btn btn-secondary" :class="{ 'btn-success': jsonFileHandle }">
+                        <i class="material-icons">{{ jsonFileHandle ? 'check_circle' : 'save' }}</i>
+                        {{ jsonFileHandle ? 'JSON Active' : 'SAVE to JSON' }}
+                    </button>
                     <button @click="confirmClearResults" class="btn btn-danger" :disabled="results.length === 0">
                         <i class="material-icons">clear_all</i>
                         Clear Results

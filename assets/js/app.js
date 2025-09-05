@@ -319,6 +319,7 @@ createApp({
       activeUserId: null, // Track which user's timing session is active
       runningTimerInterval: null,
       serverUpdateInterval: null,
+      jsonUpdateInterval: null,
       finishSignalBuffer: [], // Buffer for finish signals to prioritize c1
       finishSignalTimeout: null, // Timeout to wait for c1 signal
       connectionCheckInterval: null,
@@ -342,6 +343,8 @@ createApp({
       apiTestResult: null,
       showApiKey: false,
       competitionIdError: "",
+      jsonFileHandle: null,
+      jsonExportEnabled: false,
     };
   },
   computed: {
@@ -476,6 +479,9 @@ createApp({
 
     // Initialize timer data on server
     this.updateTimerDataServer();
+
+    // Initialize JSON export if it was previously set up
+    this.initializeJsonExport();
   },
   beforeUnmount() {
     // Clean up intervals when component is destroyed
@@ -612,6 +618,12 @@ createApp({
         this.sendResultToApi(result);
       }
 
+      // Update JSON file if enabled
+      if (this.jsonFileHandle) {
+        const jsonData = this.getLatestJsonData();
+        this.writeJsonData(jsonData);
+      }
+
       // Keep only last 100 results
       if (this.results.length > 100) {
         this.results.pop();
@@ -682,6 +694,110 @@ createApp({
         .slice(0, 10)}.csv`;
       a.click();
       window.URL.revokeObjectURL(url);
+    },
+
+    // JSON Export functionality
+    async setupJsonExport() {
+      // Check if File System Access API is supported
+      if (!this.checkFileSystemSupport()) {
+        alert("File System Access API is not supported in this browser. JSON export requires Chrome 86+ or Edge 86+.");
+        return;
+      }
+
+      try {
+        // Show file picker to select JSON file location
+        this.jsonFileHandle = await window.showSaveFilePicker({
+          suggestedName: 'agility_timer_data.json',
+          types: [{
+            description: 'JSON files',
+            accept: { 'application/json': ['.json'] }
+          }]
+        });
+
+        // Store file handle reference in localStorage (just the name for display)
+        localStorage.setItem('jsonFileName', this.jsonFileHandle.name);
+        this.jsonExportEnabled = true;
+
+        // Write initial data to the file
+        const initialData = this.getLatestJsonData();
+        await this.writeJsonData(initialData);
+
+        this.addDebugMessage(`JSON export setup complete: ${this.jsonFileHandle.name}`);
+        
+        // Show success message
+        alert(`JSON export activated! Data will be automatically saved to: ${this.jsonFileHandle.name}`);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('Error setting up JSON export:', error);
+          alert('Failed to setup JSON export: ' + error.message);
+        }
+        this.jsonFileHandle = null;
+        this.jsonExportEnabled = false;
+      }
+    },
+
+    async writeJsonData(data) {
+      if (!this.jsonFileHandle) {
+        return;
+      }
+
+      try {
+        // Create writable stream
+        const writable = await this.jsonFileHandle.createWritable();
+        
+        // Write JSON data
+        await writable.write(JSON.stringify(data, null, 2));
+        
+        // Close the stream
+        await writable.close();
+        
+        this.addDebugMessage(`JSON file updated: ${JSON.stringify(data)}`);
+      } catch (error) {
+        console.error('Error writing JSON data:', error);
+        this.addDebugMessage(`JSON write error: ${error.message}`);
+        
+        // If we get a permission error, clear the handle
+        if (error.name === 'NotAllowedError') {
+          this.jsonFileHandle = null;
+          this.jsonExportEnabled = false;
+          localStorage.removeItem('jsonFileName');
+          alert('Lost permission to write to JSON file. Please set up JSON export again.');
+        }
+      }
+    },
+
+    getLatestJsonData() {
+      // Get current timer data similar to XML endpoint
+      const timerRunning = this.isRunning;
+      let time;
+      
+      if (this.isRunning && this.displayTime !== "Ready") {
+        time = this.displayTime;
+      } else {
+        time = this.results.length > 0 ? this.results[0].time : "0.00";
+      }
+
+      return {
+        time: time,
+        running: timerRunning ? "1" : "0",
+        status: this.results.length > 0 ? this.results[0].status : "ready",
+        timestamp: new Date().toISOString(),
+        precision: this.settings.highPrecisionTime ? 3 : 2,
+        lastUpdate: new Date().toLocaleString()
+      };
+    },
+
+    checkFileSystemSupport() {
+      return 'showSaveFilePicker' in window;
+    },
+
+    initializeJsonExport() {
+      // Check if JSON export was previously enabled
+      const jsonFileName = localStorage.getItem('jsonFileName');
+      if (jsonFileName && this.checkFileSystemSupport()) {
+        this.addDebugMessage(`JSON export was previously active for file: ${jsonFileName}`);
+        this.addDebugMessage('Click "SAVE to JSON" to reactivate file writing permissions');
+      }
     },
 
     copyLatestResult() {
@@ -1294,6 +1410,16 @@ createApp({
           this.updateTimerDataServer();
         }
       }, 1000); // Update server every second
+
+      // Update JSON file more frequently (every 50ms) if enabled
+      if (this.jsonFileHandle) {
+        this.jsonUpdateInterval = setInterval(() => {
+          if (this.isRunning) {
+            const jsonData = this.getLatestJsonData();
+            this.writeJsonData(jsonData);
+          }
+        }, 50); // Update JSON every 50ms
+      }
     },
 
     stopRunningTimer() {
@@ -1304,6 +1430,10 @@ createApp({
       if (this.serverUpdateInterval) {
         clearInterval(this.serverUpdateInterval);
         this.serverUpdateInterval = null;
+      }
+      if (this.jsonUpdateInterval) {
+        clearInterval(this.jsonUpdateInterval);
+        this.jsonUpdateInterval = null;
       }
     },
 
