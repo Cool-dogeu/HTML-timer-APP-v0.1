@@ -783,7 +783,6 @@ createApp({
       return {
         time: time,
         running: timerRunning ? "1" : "0",
-        status: this.results.length > 0 ? this.results[0].status : "ready",
         timestamp: new Date().toISOString(),
         precision: this.settings.highPrecisionTime ? 3 : 2,
         lastUpdate: new Date().toLocaleString()
