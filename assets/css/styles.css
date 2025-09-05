@@ -10,6 +10,38 @@ body {
     color: #333;
     line-height: 1.6;
     overflow: hidden; /* Prevent main page scroll */
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* Light Mode (default) */
+body {
+    --bg-primary: #f5f5f5;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #f8f9fa;
+    --text-primary: #333;
+    --text-secondary: #666;
+    --border-color: #e0e0e0;
+    --header-gradient-start: #389cb4;
+    --header-gradient-end: #2f7080;
+}
+
+/* Dark Mode */
+body.dark-mode {
+    background-color: #1e1e1e;
+    color: #e5e7eb;
+    --bg-primary: #1e1e1e;
+    --bg-secondary: #2d2d2d;
+    --bg-tertiary: #3a3a3a;
+    --text-primary: #e5e7eb;
+    --text-secondary: #9ca3af;
+    --border-color: #444;
+    --header-gradient-start: #2d5a6a;
+    --header-gradient-end: #1f3f4a;
+}
+
+/* Hide content until Vue is ready */
+[v-cloak] {
+    display: none !important;
 }
 
 #app {
@@ -21,13 +53,14 @@ body {
 
 /* Header */
 .app-header {
-    background: linear-gradient(135deg, #389cb4 0%, #2f7080 100%);
+    background: linear-gradient(135deg, var(--header-gradient-start) 0%, var(--header-gradient-end) 100%);
     color: white;
     padding: 1rem 2rem;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    transition: background 0.3s;
 }
 
 .logo-container {
@@ -50,6 +83,18 @@ body {
 }
 
 .connection-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.status-item {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -110,26 +155,42 @@ body {
     transform: scale(1.1);
 }
 
-/* Main Container */
-.main-container {
+/* App Content Wrapper - Contains tabs and tab content */
+.app-content-wrapper {
     flex: 1; /* Takes remaining space after header */
     display: flex;
-    gap: 2rem;
-    padding: 2rem;
+    flex-direction: column;
+    overflow: hidden;
     max-width: 1400px;
     margin: 0 auto;
     width: 100%;
+    padding: 0 2rem;
+}
+
+/* Main Container */
+.main-container {
+    flex: 1;
+    display: flex;
     overflow: hidden;
     min-height: 0; /* Allow flex item to shrink */
+}
+
+/* Timer Content Wrapper - White background container */
+.timer-content-wrapper {
+    flex: 1;
+    display: flex;
+    gap: 2rem;
+    padding: 2rem;
+    background: var(--bg-secondary);
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    overflow: hidden;
+    transition: background 0.3s;
 }
 
 /* Timer Section */
 .timer-section {
     flex: 1;
-    background: white;
-    border-radius: 8px;
-    padding: 2rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     position: relative;
     overflow: hidden;
 }
@@ -137,17 +198,18 @@ body {
 .section-title {
     text-align: center;
     font-size: 1rem;
-    color: #666;
+    color: var(--text-secondary);
     margin-bottom: 1rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    transition: color 0.3s;
 }
 
 .timer-display {
     text-align: center;
     padding: 3rem 1rem;
     border-radius: 8px;
-    background: #f8f9fa;
+    background: var(--bg-tertiary);
     margin-bottom: 2rem;
     transition: all 0.3s;
     cursor: pointer;
@@ -170,8 +232,9 @@ body {
 
 .timer-status {
     font-size: 1.2rem;
-    color: #666;
+    color: var(--text-secondary);
     margin-top: 1.5rem;
+    transition: color 0.3s;
 }
 
 .control-buttons {
@@ -199,8 +262,9 @@ body {
     text-align: center;
     margin: 1rem 0;
     padding: 0.5rem;
-    background: #f8f9fa;
+    background: var(--bg-tertiary);
     border-radius: 4px;
+    transition: background 0.3s;
 }
 
 /* Buttons */
@@ -264,10 +328,6 @@ body {
 /* Results Section */
 .results-section {
     flex: 1;
-    background: white;
-    border-radius: 8px;
-    padding: 2rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     display: flex;
     flex-direction: column;
 }
@@ -286,21 +346,24 @@ body {
     justify-content: center;
     margin-top: 1rem;
     padding-top: 1rem;
-    border-top: 1px solid #e0e0e0;
+    border-top: 1px solid var(--border-color);
+    transition: border-color 0.3s;
 }
 
 .section-header h2 {
-    color: #333;
+    color: var(--text-primary);
     font-weight: 400;
     margin: 0;
+    transition: color 0.3s;
 }
 
 .results-table-container {
     flex: 1;
     overflow-y: auto;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--border-color);
     border-radius: 4px;
     min-height: 0; /* Allow flex item to shrink */
+    transition: border-color 0.3s;
 }
 
 .results-table {
@@ -309,23 +372,26 @@ body {
 }
 
 .results-table thead {
-    background: #f5f5f5;
+    background: var(--bg-tertiary);
     position: sticky;
     top: 0;
+    transition: background 0.3s;
 }
 
 .results-table th,
 .results-table td {
     padding: 0.75rem;
     text-align: left;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--border-color);
+    transition: border-color 0.3s;
 }
 
 .results-table th {
     font-weight: 500;
-    color: #666;
+    color: var(--text-secondary);
     text-transform: uppercase;
     font-size: 0.875rem;
+    transition: color 0.3s;
 }
 
 .results-table tbody tr {
@@ -334,11 +400,15 @@ body {
 }
 
 .results-table tbody tr:hover {
-    background: #f5f5f5;
+    background: var(--bg-tertiary);
 }
 
 .results-table tbody tr.selected {
     background: #e3f2fd;
+}
+
+body.dark-mode .results-table tbody tr.selected {
+    background: #2c5282;
 }
 
 .result-clean {
@@ -366,16 +436,18 @@ body {
 }
 
 .modal {
-    background: white;
+    background: var(--bg-secondary);
     border-radius: 8px;
     padding: 2rem;
     min-width: 400px;
     box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    transition: background 0.3s;
 }
 
 .modal h2 {
     margin-bottom: 1.5rem;
-    color: #333;
+    color: var(--text-primary);
+    transition: color 0.3s;
 }
 
 .form-group {
@@ -385,17 +457,20 @@ body {
 .form-group label {
     display: block;
     margin-bottom: 0.5rem;
-    color: #666;
+    color: var(--text-secondary);
     font-weight: 500;
+    transition: color 0.3s;
 }
 
 .form-control {
     width: 100%;
     padding: 0.75rem;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 4px;
     font-size: 1rem;
-    transition: border-color 0.3s;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    transition: border-color 0.3s, background 0.3s, color 0.3s;
 }
 
 .form-control:focus {
@@ -406,10 +481,10 @@ body {
 
 .form-control.readonly,
 .form-control[readonly] {
-    background-color: #f5f5f5;
-    color: #666;
+    background-color: var(--bg-tertiary);
+    color: var(--text-secondary);
     cursor: not-allowed;
-    border-color: #ddd;
+    border-color: var(--border-color);
 }
 
 .form-control.readonly:focus,
@@ -443,28 +518,32 @@ body {
     body {
         overflow: auto; /* Allow scrolling on mobile */
     }
-    
+
     #app {
         height: auto; /* Allow natural height on mobile */
         min-height: 100vh; /* At least full viewport */
     }
-    
-    .main-container {
+
+    .app-content-wrapper {
+        padding: 0 1rem;
+    }
+
+    .timer-content-wrapper {
         flex-direction: column;
         height: auto; /* Natural height for vertical layout */
         overflow: visible;
     }
-    
+
     .timer-section,
     .results-section {
         overflow: visible; /* No overflow restrictions on mobile */
     }
-    
+
     .results-table-container {
         max-height: 400px; /* Reasonable max height for mobile */
         min-height: 200px;
     }
-    
+
     .timer-value {
         font-size: 3rem;
     }
@@ -474,15 +553,10 @@ body {
     .app-header {
         padding: 1rem;
     }
-    
-    .main-container {
+
+    .timer-content-wrapper {
         padding: 1rem;
         gap: 1rem;
-    }
-    
-    .timer-section,
-    .results-section {
-        padding: 1rem;
     }
     
     .timer-display {
@@ -542,6 +616,10 @@ body {
 .btn-small {
     padding: 0.25rem 0.75rem;
     font-size: 0.875rem;
+}
+
+.theme-toggle {
+    margin-left: 0.5rem;
 }
 
 .debug-content {
@@ -649,6 +727,48 @@ body {
     margin: 1rem 0 2rem 0;
     color: #666;
     line-height: 1.5;
+}
+
+/* Compact Timer Modal */
+.compact-timer-modal {
+    max-width: 450px;
+    text-align: center;
+}
+
+.compact-timer-display {
+    text-align: center;
+    padding: 2rem 1rem;
+    border-radius: 8px;
+    background: var(--bg-tertiary);
+    margin: 1.5rem 0;
+    transition: all 0.3s;
+    cursor: pointer;
+    user-select: none;
+}
+
+.compact-timer-display.running {
+    background: #e3f2fd;
+    box-shadow: 0 0 20px rgba(33, 150, 243, 0.3);
+}
+
+body.dark-mode .compact-timer-display.running {
+    background: #1e3a5f;
+    box-shadow: 0 0 20px rgba(33, 150, 243, 0.5);
+}
+
+.compact-timer-value {
+    font-size: 3.5rem;
+    font-weight: 300;
+    font-family: 'Roboto Mono', monospace;
+    color: #2196f3;
+    line-height: 1;
+}
+
+.compact-timer-status {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-top: 1rem;
+    transition: color 0.3s;
 }
 
 /* Settings Modal */
@@ -845,12 +965,603 @@ textarea.form-control {
         max-width: calc(100% - 2rem);
         margin: 1rem;
     }
-    
+
     .api-settings {
         padding: 0.75rem;
     }
-    
+
     .template-example code {
         font-size: 0.75rem;
+    }
+}
+
+/* Tabbed Interface */
+.tabs-container {
+    background: var(--bg-secondary);
+    border-radius: 8px 8px 0 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: background 0.3s;
+}
+
+.tabs-header {
+    display: flex;
+    border-bottom: 2px solid var(--border-color);
+    padding: 0 1rem;
+    transition: border-color 0.3s;
+}
+
+.tab-button {
+    padding: 1rem 2rem;
+    background: none;
+    border: none;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.3s;
+}
+
+.tab-button:hover {
+    color: #2196f3;
+    background: var(--bg-tertiary);
+}
+
+.tab-button.active {
+    color: #2196f3;
+    border-bottom-color: #2196f3;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: flex;
+}
+
+/* For MLED container, override flex to block */
+.mled-container.tab-content.active {
+    display: block;
+}
+
+/* MLED Display Styles */
+.mled-container {
+    background: var(--bg-secondary);
+    border-radius: 0 0 8px 8px;
+    padding: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: background 0.3s;
+    /* Enable scrolling for Display tab */
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.mled-container h2 {
+    color: var(--text-primary);
+    transition: color 0.3s;
+}
+
+.mled-title {
+    text-align: center;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    font-weight: 400;
+    transition: color 0.3s;
+    padding: 2rem 2rem 0 2rem;
+}
+
+/* Sticky Control Bar */
+.mled-sticky-controls {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    padding: 1rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+
+.mled-sticky-controls .mled-preview {
+    margin: 0;
+    min-height: 62px;
+}
+
+.mled-sticky-controls-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.mled-sticky-right-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.mled-sticky-controls .brightness-slider-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.mled-sticky-controls .brightness-slider-wrap span {
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.mled-sticky-controls .btn {
+    flex-shrink: 0;
+}
+
+.mled-module {
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin: 1.5rem 2rem;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    position: relative;
+    transition: background 0.3s, color 0.3s, border-color 0.3s;
+}
+
+.mled-module.disabled {
+    opacity: 0.6;
+}
+
+/* Only disable pointer events for module content, not the toggle */
+.mled-module.disabled > :not(.module-toggle) {
+    pointer-events: none;
+}
+
+.mled-module.collapsed > :not(.module-toggle):not(.module-header) {
+    display: none !important;
+}
+
+.module-header {
+    font-size: 1.5rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 1rem;
+    text-align: center;
+    color: var(--text-primary);
+    transition: color 0.3s;
+}
+
+.module-toggle {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 20;
+}
+
+.module-toggle label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: color 0.3s;
+}
+
+.module-toggle input[type="checkbox"] {
+    appearance: none;
+    width: 44px;
+    height: 24px;
+    border-radius: 999px;
+    background: #666;
+    border: 1px solid var(--border-color);
+    position: relative;
+    cursor: pointer;
+    outline: none;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.module-toggle input[type="checkbox"]::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #000;
+    transition: left 0.2s, background 0.2s;
+}
+
+.module-toggle input[type="checkbox"]:checked {
+    background: #22c55e;
+    border-color: #16a34a;
+}
+
+.module-toggle input[type="checkbox"]:checked::after {
+    left: 23px;
+    background: #000;
+}
+
+.mled-status-bar {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    padding: 12px 16px;
+    font-weight: 700;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    text-align: center;
+    border: 1px solid var(--border-color);
+    transition: background 0.3s, color 0.3s, border-color 0.3s;
+}
+
+.mled-status-bar.connected {
+    background: #22c55e;
+    color: #062b14;
+    border-color: #16a34a;
+}
+
+.mled-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin: 1rem 0;
+}
+
+.mled-preview {
+    background: #000;
+    color: #e5e7eb;
+    border-radius: 14px;
+    padding: 1rem 1.5rem;
+    border: 1px solid var(--border-color);
+    min-height: 62px;
+    font-family: Menlo, Consolas, monospace;
+    font-size: 1.75rem;
+    letter-spacing: 1px;
+    margin: 1rem 0;
+    transition: border-color 0.3s;
+}
+
+.mled-preview-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.mled-preview-left {
+    flex: 1;
+    white-space: pre-wrap;
+    text-align: left;
+}
+
+.mled-preview-right {
+    flex: 0 0 auto;
+    font-size: 1.125rem;
+    font-weight: 800;
+    color: #9ca3af;
+    text-align: right;
+}
+
+.mled-badge {
+    padding: 10px 16px;
+    border-radius: 16px;
+    font-weight: 800;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    transition: background 0.3s, color 0.3s, border-color 0.3s;
+}
+
+.mled-badge.connected {
+    background: #22c55e;
+    color: #062b14;
+    border-color: #16a34a;
+}
+
+/* Brightness Slider */
+.brightness-slider-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.brightness-slider {
+    position: relative;
+    width: 180px;
+    height: 34px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px;
+    transition: background 0.3s, border-color 0.3s;
+}
+
+.brightness-slider button {
+    flex: 1;
+    height: 28px;
+    margin: 0 4px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-weight: 700;
+    cursor: pointer;
+    z-index: 2;
+    transition: color 0.3s;
+}
+
+.brightness-knob {
+    position: absolute;
+    top: 3px;
+    width: 56px;
+    height: 28px;
+    border-radius: 999px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    transition: left 0.15s, background 0.3s, border-color 0.3s;
+    z-index: 1;
+}
+
+.brightness-slider[data-pos="1"] .brightness-knob {
+    left: 3px;
+}
+
+.brightness-slider[data-pos="2"] .brightness-knob {
+    left: 62px;
+}
+
+.brightness-slider[data-pos="3"] .brightness-knob {
+    left: 121px;
+}
+
+/* MLED Form Controls */
+.mled-input {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 10px;
+    border-radius: 8px;
+    transition: background 0.3s, color 0.3s, border-color 0.3s;
+}
+
+.mled-input:focus {
+    outline: none;
+    border-color: #2196f3;
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.mled-select {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.3s, color 0.3s, border-color 0.3s;
+}
+
+.mled-select:focus {
+    outline: none;
+    border-color: #2196f3;
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.mled-textarea {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 10px;
+    border-radius: 8px;
+    width: 100%;
+    resize: none;
+    height: 44px;
+    transition: background 0.3s, color 0.3s, border-color 0.3s;
+}
+
+.mled-textarea:focus {
+    outline: none;
+    border-color: #2196f3;
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.mled-button {
+    display: inline-block;
+    padding: 14px 18px;
+    border: none;
+    border-radius: 16px;
+    cursor: pointer;
+    font-weight: 800;
+    color: #000;
+    transition: all 0.2s;
+}
+
+.mled-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.mled-button.green {
+    background: #22c55e;
+}
+
+.mled-button.green:hover:not(:disabled) {
+    background: #16a34a;
+}
+
+.mled-button.green:active:not(:disabled) {
+    background: #15803d;
+}
+
+.mled-button.red {
+    background: #ef4444;
+}
+
+.mled-button.red:hover:not(:disabled) {
+    background: #dc2626;
+}
+
+.mled-button.blue {
+    background: #3b82f6;
+}
+
+.mled-button.blue:hover:not(:disabled) {
+    background: #2563eb;
+}
+
+.mled-button.gray {
+    background: #9ca3af;
+}
+
+.mled-button.gray:hover:not(:disabled) {
+    background: #a8afb7;
+}
+
+/* Character Counter */
+.char-counter {
+    position: absolute;
+    right: 12px;
+    bottom: 8px;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    pointer-events: none;
+    transition: color 0.3s;
+}
+
+/* Radio Controls */
+.mled-radio-group {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+}
+
+.mled-radio-group label {
+    cursor: pointer;
+}
+
+/* Module Labels - Better visibility */
+.mled-module label.module-label {
+    color: var(--text-primary);
+    font-weight: 500;
+    transition: color 0.3s;
+}
+
+/* Module Section Container - Theme-aware background */
+.module-section-container {
+    background: var(--bg-tertiary);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    transition: background 0.3s;
+}
+
+.module-section-container:last-child {
+    margin-bottom: 0;
+}
+
+/* Module Section Label - Theme-aware text color */
+.module-section-label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    transition: color 0.3s;
+}
+
+.module-section-text {
+    color: var(--text-primary);
+    margin-top: 0.5rem;
+    transition: color 0.3s;
+}
+
+@media (max-width: 1024px) {
+    .mled-container {
+        max-height: calc(100vh - 160px);
+    }
+
+    .mled-sticky-controls {
+        padding: 1rem;
+    }
+
+    .mled-module {
+        margin: 1.5rem 1rem;
+    }
+
+    .tab-button {
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .tabs-header {
+        padding: 0 0.5rem;
+    }
+
+    .tab-button {
+        padding: 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    .mled-container {
+        padding: 0;
+        max-height: calc(100vh - 140px);
+    }
+
+    .mled-title {
+        padding: 1rem 1rem 0 1rem;
+    }
+
+    .mled-module {
+        padding: 1rem;
+        margin: 1rem;
+    }
+
+    .mled-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .brightness-slider {
+        width: 100%;
+    }
+
+    /* Sticky controls responsive */
+    .mled-sticky-controls {
+        padding: 0.75rem 1rem;
+    }
+
+    .mled-sticky-controls-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .mled-sticky-right-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+
+    .mled-sticky-controls .brightness-slider-wrap {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+
+    .mled-sticky-controls .brightness-slider-wrap span {
+        text-align: center;
+    }
+
+    .mled-sticky-controls .btn {
+        width: 100%;
+        justify-content: center;
     }
 }

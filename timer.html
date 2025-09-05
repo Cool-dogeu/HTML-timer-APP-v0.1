@@ -52,7 +52,7 @@
     />
   </head>
   <body>
-    <div id="app">
+    <div id="app" v-cloak>
       <header class="app-header">
         <div class="logo-container">
           <img src="assets/images/logo.png" alt="CoolDog" class="logo" />
@@ -63,12 +63,23 @@
             <i class="material-icons">refresh</i>
             Refresh
           </button>
-          <span class="status-led" :class="statusLedClass"></span>
-          <span>{{ connectionStatus }}</span>
+          <div class="status-group">
+            <div class="status-item">
+              <span class="status-led" :class="statusLedClass"></span>
+              <span>Timer: {{ connectionStatus }}</span>
+            </div>
+            <div class="status-item">
+              <span class="status-led" :class="mledStatusLedClass"></span>
+              <span>Display: {{ mledConnectionStatus }}</span>
+            </div>
+          </div>
           <span v-if="!isOnline" class="offline-indicator">
             <i class="material-icons">cloud_off</i>
             OFFLINE
           </span>
+          <button @click="toggleTheme" class="btn btn-secondary btn-small theme-toggle" :title="isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'">
+            <i class="material-icons">{{ isDarkMode ? 'light_mode' : 'dark_mode' }}</i>
+          </button>
           <img
             src="assets/images/logo.png"
             alt="CoolDog"
@@ -78,21 +89,56 @@
         </div>
       </header>
 
-      <main class="main-container">
-        <section class="timer-section">
+      <!-- Main content wrapper with tabs -->
+      <div class="app-content-wrapper">
+        <!-- Tabs inside wrapper -->
+        <div class="tabs-container">
+          <div class="tabs-header">
+            <button
+              class="tab-button"
+              :class="{ active: activeTab === 'timer' }"
+              @click="activeTab = 'timer'"
+            >
+              <i class="material-icons" style="vertical-align: middle; font-size: 20px;">timer</i>
+              Timer
+            </button>
+            <button
+              class="tab-button"
+              :class="{ active: activeTab === 'display' }"
+              @click="activeTab = 'display'"
+            >
+              <i class="material-icons" style="vertical-align: middle; font-size: 20px;">tv</i>
+              Display
+            </button>
+          </div>
+        </div>
+
+        <!-- Timer Tab Content -->
+        <main class="main-container tab-content" :class="{ active: activeTab === 'timer' }">
+          <div class="timer-content-wrapper">
+            <section class="timer-section">
           <div class="section-header">
             <h2>Latest Result</h2>
-            <button
-              @click="copyLatestResult"
-              class="btn btn-secondary"
-              :class="{ 'copy-success': copyButtonEffect === 'latest' }"
-            >
-              <i class="material-icons"
-                >{{ copyButtonEffect === 'latest' ? 'check' : 'content_copy'
-                }}</i
+            <div style="display: flex; gap: 0.5rem;">
+              <button
+                @click="openPictureInPicture"
+                class="btn btn-secondary btn-small"
+                title="Open Picture-in-Picture window"
               >
-              {{ copyButtonEffect === 'latest' ? 'Copied!' : 'Copy' }}
-            </button>
+                <i class="material-icons">picture_in_picture_alt</i>
+              </button>
+              <button
+                @click="copyLatestResult"
+                class="btn btn-secondary"
+                :class="{ 'copy-success': copyButtonEffect === 'latest' }"
+              >
+                <i class="material-icons"
+                  >{{ copyButtonEffect === 'latest' ? 'check' : 'content_copy'
+                  }}</i
+                >
+                {{ copyButtonEffect === 'latest' ? 'Copied!' : 'Copy' }}
+              </button>
+            </div>
           </div>
           <div
             class="timer-display"
@@ -211,7 +257,300 @@
             </button>
           </div>
         </section>
+          </div><!-- Close timer-content-wrapper -->
       </main>
+
+      <!-- Display Tab Content -->
+      <div class="mled-container tab-content" :class="{ active: activeTab === 'display' }">
+        <!-- Sticky Control Bar -->
+        <div class="mled-sticky-controls">
+          <div class="mled-preview">
+            <div class="mled-preview-row">
+              <div class="mled-preview-left" v-html="mledPreviewText"></div>
+              <div class="mled-preview-right">Active: {{ mledActiveLabel }}</div>
+            </div>
+          </div>
+
+          <div class="mled-sticky-controls-row">
+            <button @click="toggleMledConnection" class="btn" :class="mledConnected ? 'btn-danger' : 'btn-primary'">
+              <i class="material-icons">{{ mledConnected ? 'usb_off' : 'usb' }}</i>
+              {{ mledConnected ? 'Disconnect' : 'Connect' }}
+            </button>
+
+            <div class="mled-sticky-right-controls">
+              <div class="brightness-slider-wrap">
+                <span style="color: var(--text-primary);">Brightness</span>
+                <div class="brightness-slider" :data-pos="mledBrightness">
+                  <div class="brightness-knob"></div>
+                  <button @click="setMledBrightness(1)" type="button">1</button>
+                  <button @click="setMledBrightness(2)" type="button">2</button>
+                  <button @click="setMledBrightness(3)" type="button">3</button>
+                </div>
+              </div>
+              <button @click="clearMled" class="btn btn-secondary">
+                <i class="material-icons">clear_all</i>
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- MLED Text Module -->
+        <div class="mled-module" :class="{ disabled: !mledTextEnabled }">
+          <div class="module-toggle">
+            <label>
+              <input type="checkbox" v-model="mledTextEnabled" :disabled="!mledConnected" />
+              Enable
+            </label>
+          </div>
+          <div class="module-header">MLED TEXT</div>
+
+          <div style="position: relative;">
+            <textarea
+              v-model="mledTextInput"
+              class="mled-textarea"
+              placeholder="max 64 bytes"
+              maxlength="64"
+              @input="updateMledCharCounter"
+            ></textarea>
+            <div class="char-counter">{{ mledCharsLeft }} left</div>
+          </div>
+
+          <div class="mled-controls" style="justify-content: space-between; margin-top: 12px;">
+            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+              <label class="module-label">Scroll speed</label>
+              <div class="mled-radio-group">
+                <label><input type="radio" v-model="mledScrollSpeed" value="0" /> 0</label>
+                <label><input type="radio" v-model="mledScrollSpeed" value="1" /> 1</label>
+                <label><input type="radio" v-model="mledScrollSpeed" value="2" /> 2</label>
+                <label><input type="radio" v-model="mledScrollSpeed" value="3" /> 3</label>
+              </div>
+            </div>
+
+            <button @click="sendMledText" class="btn btn-primary">Send text</button>
+
+            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+              <label class="module-label">Text color</label>
+              <select v-model="mledTextColor" class="mled-select">
+                <option value="Default">Default</option>
+                <option value="Red">Red</option>
+                <option value="Green">Green</option>
+                <option value="Blue">Blue</option>
+                <option value="Yellow">Yellow</option>
+                <option value="Magenta">Magenta</option>
+                <option value="Cyan">Cyan</option>
+                <option value="White">White</option>
+                <option value="Orange">Orange</option>
+                <option value="Deep pink">Deep pink</option>
+                <option value="Light Blue">Light Blue</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Coursewalks Module -->
+        <div class="mled-module" :class="{ disabled: !mledCwEnabled }">
+          <div class="module-toggle">
+            <label>
+              <input type="checkbox" v-model="mledCwEnabled" :disabled="!mledConnected" />
+              Enable
+            </label>
+          </div>
+          <div class="module-header">Coursewalks</div>
+
+          <div class="mled-controls" style="gap: 1rem; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+              <label class="module-label">Version:</label>
+              <select v-model="mledCwVersion" class="mled-select" :disabled="!mledCwEnabled">
+                <option value="1">CW1</option>
+                <option value="2">CW2</option>
+                <option value="3">CW3</option>
+                <option value="4">CW4</option>
+              </select>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 1rem;">
+              <label class="module-label">Duration:</label>
+              <select v-model="mledCwDuration" class="mled-select" :disabled="!mledCwEnabled">
+                <option value="7">7 min</option>
+                <option value="8">8 min</option>
+                <option value="9">9 min</option>
+                <option value="10">10 min</option>
+              </select>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 1rem;">
+              <label class="module-label">Wait:</label>
+              <select v-model="mledCwWait" class="mled-select" :disabled="!mledCwEnabled">
+                <option value="10">10 s</option>
+                <option value="20">20 s</option>
+                <option value="30">30 s</option>
+              </select>
+            </div>
+
+            <button @click="startCoursewalk" class="btn btn-primary" :disabled="!mledCwEnabled">Start</button>
+          </div>
+        </div>
+
+        <!-- Countdown Timer Module -->
+        <div class="mled-module" :class="{ disabled: !mledTimerEnabled }">
+          <div class="module-toggle">
+            <label>
+              <input type="checkbox" v-model="mledTimerEnabled" :disabled="!mledConnected" />
+              Enable
+            </label>
+          </div>
+          <div class="module-header">Countdown</div>
+
+          <!-- Count Up -->
+          <div class="mled-controls" style="gap: 1rem; margin-bottom: 1rem;">
+            <label class="module-label">Count up</label>
+            <label class="module-label" style="margin-left: 12px;">Color</label>
+            <select v-model="mledUpColor" class="mled-select" :disabled="!mledTimerEnabled">
+              <option value="Red">Red</option>
+              <option value="Green">Green</option>
+              <option value="Blue">Blue</option>
+              <option value="Yellow">Yellow</option>
+              <option value="Magenta">Magenta</option>
+              <option value="Cyan">Cyan</option>
+              <option value="White">White</option>
+              <option value="Orange">Orange</option>
+              <option value="Deep pink">Deep pink</option>
+              <option value="Light Blue">Light Blue</option>
+            </select>
+            <button @click="startCountUp" class="btn btn-primary" :disabled="!mledTimerEnabled">Start</button>
+            <button @click="stopCountUp" class="btn btn-danger" :disabled="!mledTimerEnabled">Stop</button>
+          </div>
+
+          <!-- Count Down -->
+          <div class="module-section-container">
+            <div class="mled-controls" style="gap: 1rem; flex-wrap: wrap;">
+              <label class="module-label">Count down</label>
+              <label class="module-section-label">hh</label>
+              <input
+                v-model.number="mledDownHH"
+                type="number"
+                min="0"
+                max="1"
+                style="width: 60px;"
+                class="mled-select"
+                :disabled="!mledTimerEnabled"
+              />
+              <label class="module-label" style="margin-left: 12px;">mm</label>
+              <input
+                v-model.number="mledDownMM"
+                type="number"
+                min="0"
+                max="99"
+                style="width: 70px;"
+                class="mled-select"
+                :disabled="!mledTimerEnabled"
+              />
+              <label class="module-label">ss</label>
+              <input
+                v-model.number="mledDownSS"
+                type="number"
+                min="0"
+                max="59"
+                style="width: 70px;"
+                class="mled-select"
+                :disabled="!mledTimerEnabled"
+              />
+              <label class="module-label" style="margin-left: 12px;">Color</label>
+              <select v-model="mledDownColor" class="mled-select" :disabled="!mledTimerEnabled">
+                <option value="Red">Red</option>
+                <option value="Green">Green</option>
+                <option value="Blue">Blue</option>
+                <option value="Yellow">Yellow</option>
+                <option value="Magenta">Magenta</option>
+                <option value="Cyan">Cyan</option>
+                <option value="White">White</option>
+                <option value="Orange">Orange</option>
+                <option value="Deep pink">Deep pink</option>
+                <option value="Light Blue">Light Blue</option>
+              </select>
+            </div>
+            <div class="mled-controls" style="gap: 1rem; margin-top: 1rem;">
+              <button @click="startCountDown" class="btn btn-primary" :disabled="!mledTimerEnabled">Start</button>
+              <button @click="stopCountDown" class="btn btn-danger" :disabled="!mledTimerEnabled">Stop</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Timer LINK Module -->
+        <div class="mled-module" :class="{ disabled: !mledLinkEnabled }">
+          <div class="module-toggle">
+            <label>
+              <input type="checkbox" v-model="mledLinkEnabled" :disabled="!mledConnected" />
+              Enable
+            </label>
+          </div>
+          <div class="module-header">Timer LINK</div>
+
+          <div style="padding: 1rem;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+              <label class="module-label" style="width: 140px;">Color:</label>
+              <select v-model="mledLinkColor" class="mled-select" :disabled="!mledLinkEnabled">
+                <option value="Red">Red</option>
+                <option value="Green">Green</option>
+                <option value="Blue">Blue</option>
+                <option value="Yellow">Yellow</option>
+                <option value="Magenta">Magenta</option>
+                <option value="Cyan">Cyan</option>
+                <option value="White">White</option>
+                <option value="Orange">Orange</option>
+                <option value="Deep pink">Deep pink</option>
+                <option value="Light Blue">Light Blue</option>
+              </select>
+            </div>
+
+            <div class="module-section-container">
+              <label class="module-section-label">Status:</label>
+              <div class="module-section-text">
+                {{ mledLinkStatus }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Data Integrator Module -->
+        <div class="mled-module" :class="{ disabled: !mledDataEnabled }">
+          <div class="module-toggle">
+            <label>
+              <input type="checkbox" v-model="mledDataEnabled" :disabled="!mledConnected" />
+              Enable
+            </label>
+          </div>
+          <div class="module-header">DATA INTEGRATOR</div>
+
+          <div style="padding: 1rem;">
+            <div class="module-section-container">
+              <label class="module-label" style="display: block; margin-bottom: 0.5rem;">JSON URL:</label>
+              <input
+                v-model="mledDataUrl"
+                type="text"
+                placeholder="https://www.smarteragilitysecretary.com/api/ring-jumbotron?key=...&token=..."
+                class="mled-select"
+                style="width: 100%; font-size: 0.85rem;"
+                :disabled="!mledDataEnabled"
+              />
+              <small style="color: #888; font-size: 0.75rem; display: block; margin-top: 0.25rem;">
+                Paste full smarteragilitysecretary.com URL - will be auto-proxied to avoid CORS
+              </small>
+              <div style="display: flex; margin-top: 0.5rem;">
+                <button @click="toggleMledDataAutoUpdate" class="btn" :class="mledDataAutoUpdate ? 'btn-danger' : 'btn-primary'" style="width: 100%;" :disabled="!mledDataEnabled || !mledDataUrl">
+                  {{ mledDataAutoUpdate ? 'Stop Auto-Update' : 'Start Auto-Update' }}
+                </button>
+              </div>
+
+              <div class="module-section-label" style="font-size: 0.85rem; margin-top: 1rem;">
+                {{ mledDataStatus }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div><!-- Close app-content-wrapper -->
 
       <!-- Debug Console -->
       <div v-if="showDebugConsole" class="debug-console">
@@ -254,8 +593,7 @@
                 Test Long Time (>1min)
               </button>
               <span class="test-status"
-                >{{ testRunning ? 'Running automated tests...' : 'Test runner
-                stopped' }}</span
+                >{{ testRunning ? 'Running automated tests...' : 'Test runner stopped' }}</span
               >
             </div>
           </div>
@@ -531,47 +869,6 @@
                     >Timer Finished (Result)</label
                   >
                 </div>
-<<<<<<< Updated upstream
-                <div class="results-table-container">
-                    <table class="results-table">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Result</th>
-                                <th>Timestamp</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="(result, index) in results" :key="index" 
-                                @click="selectResult(index)" 
-                                @dblclick="copyResultRow(index)"
-                                :class="{ selected: selectedResultIndex === index }"
-                                title="Click to select, double-click to copy">
-                                <td>{{ results.length - index }}</td>
-                                <td :class="'result-' + result.status">{{ formatResultDisplay(result) }}</td>
-                                <td>{{ result.timestamp }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                
-                <div class="results-actions">
-                    <button @click="exportResults" class="btn btn-secondary" :disabled="results.length === 0">
-                        <i class="material-icons">download</i>
-                        Export CSV
-                    </button>
-                    <button @click="setupJsonExport" class="btn btn-secondary" :class="{ 'btn-success': jsonFileHandle }">
-                        <i class="material-icons">{{ jsonFileHandle ? 'check_circle' : 'save' }}</i>
-                        {{ jsonFileHandle ? 'JSON Active' : 'SAVE to JSON' }}
-                    </button>
-                    <button @click="confirmClearResults" class="btn btn-danger" :disabled="results.length === 0">
-                        <i class="material-icons">clear_all</i>
-                        Clear Results
-                    </button>
-                </div>
-            </section>
-        </main>
-=======
                 <input
                   type="number"
                   id="statusFinished"
@@ -583,7 +880,6 @@
               </div>
             </div>
           </div>
->>>>>>> Stashed changes
 
           <div class="modal-buttons">
             <button @click="saveSettings" class="btn btn-primary">
@@ -709,6 +1005,38 @@
 
           <div class="modal-buttons">
             <button @click="cancelInfo" class="btn btn-primary">Close</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Compact Timer Modal -->
+      <div v-if="showCompactTimer" class="modal-backdrop" @click="closeCompactTimer">
+        <div class="modal compact-timer-modal" @click.stop>
+          <h2>Latest Result</h2>
+          <div
+            class="compact-timer-display"
+            :class="{ running: isRunning }"
+            @dblclick="copyLatestResult"
+            title="Double-click to copy"
+          >
+            <div class="compact-timer-value">{{ displayTime }}</div>
+            <div class="compact-timer-status">{{ timerStatus }}</div>
+          </div>
+          <div class="modal-buttons">
+            <button
+              @click="copyLatestResult"
+              class="btn btn-primary"
+              :class="{ 'copy-success': copyButtonEffect === 'latest' }"
+            >
+              <i class="material-icons"
+                >{{ copyButtonEffect === 'latest' ? 'check' : 'content_copy'
+                }}</i
+              >
+              {{ copyButtonEffect === 'latest' ? 'Copied!' : 'Copy' }}
+            </button>
+            <button @click="closeCompactTimer" class="btn btn-secondary">
+              Close
+            </button>
           </div>
         </div>
       </div>
