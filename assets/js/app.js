@@ -3115,10 +3115,10 @@ createApp({
 
     setMledBrightness(level) {
       this.mledBrightness = level;
-      // If we have a last payload, resend it with new brightness
+      // Immediately update display with new brightness
+      // This provides instant feedback even if a timed module (like coursewalks) is running
       if (this.mledLastPayload && this.mledConnected) {
-        this.mledSerialManager
-          .sendFrame(this.mledLine, this.mledBrightness, this.mledLastPayload)
+        this.sendMledFrame(this.mledLine, this.mledBrightness, this.mledLastPayload)
           .catch((err) => {
             console.error("Brightness update failed:", err);
           });
