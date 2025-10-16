@@ -571,13 +571,17 @@ createApp({
       mledDownTimer: null,
       mledDownEndTs: 0,
       mledDownColorCode: 1,
+      mledDownHold: 10, // Hold time in seconds after countdown reaches 0
+      mledDownClearTimer: null, // Auto-clear timer after countdown reaches 0
       // Timer LINK module
       mledLinkEnabled: false,
       mledLinkToMled: true,
       mledLinkLine: 7,
       mledLinkColor: "Green",
+      mledLinkHold: 10, // Hold time in seconds after timer stops
       mledLinkStatus: "Waiting for timer data...",
       mledLinkLastUpdate: 0,
+      mledLinkClearTimer: null, // Auto-clear timer after timer stops
       // Data Integrator module
       mledDataEnabled: false,
       mledDataSource: "url",
@@ -821,7 +825,9 @@ createApp({
     mledDownHH() { this.saveMledSettings(); },
     mledDownMM() { this.saveMledSettings(); },
     mledDownSS() { this.saveMledSettings(); },
+    mledDownHold() { this.saveMledSettings(); },
     mledLinkColor() { this.saveMledSettings(); },
+    mledLinkHold() { this.saveMledSettings(); },
     mledDataUrl() { this.saveMledSettings(); }
   },
   mounted() {
@@ -949,7 +955,9 @@ createApp({
         if (mledSettings.downHH !== undefined) this.mledDownHH = mledSettings.downHH;
         if (mledSettings.downMM !== undefined) this.mledDownMM = mledSettings.downMM;
         if (mledSettings.downSS !== undefined) this.mledDownSS = mledSettings.downSS;
+        if (mledSettings.downHold !== undefined) this.mledDownHold = mledSettings.downHold;
         if (mledSettings.linkColor !== undefined) this.mledLinkColor = mledSettings.linkColor;
+        if (mledSettings.linkHold !== undefined) this.mledLinkHold = mledSettings.linkHold;
         if (mledSettings.dataUrl !== undefined) this.mledDataUrl = mledSettings.dataUrl;
         // Load enabled states - only if explicitly saved as true
         if (mledSettings.textEnabled === true) this.mledTextEnabled = true;
@@ -1164,7 +1172,9 @@ createApp({
         downHH: this.mledDownHH,
         downMM: this.mledDownMM,
         downSS: this.mledDownSS,
+        downHold: this.mledDownHold,
         linkColor: this.mledLinkColor,
+        linkHold: this.mledLinkHold,
         dataUrl: this.mledDataUrl,
         // Save the last active state
         activeLabel: this.mledActiveLabel,
@@ -1315,7 +1325,7 @@ createApp({
       console.log("✅ Display updated to:", this.displayTime);
 
       // Route to MLED via Timer LINK if enabled
-      if (this.mledLinkEnabled && this.mledLinkToMled && this.mledConnected) {
+      if (this.mledLinkEnabled && this.mledLinkToMled && (this.mledConnected || this.hdmiEnabled)) {
         this.routeTimerToMled(timeStr, "finished");
       }
 
@@ -1966,33 +1976,37 @@ createApp({
 
     // HDMI Output Methods
     async sendMledFrame(line, brightness, payload) {
-      // Send to MLED device
-      if (this.mledSerialManager) {
-        await this.mledSerialManager.sendFrame(line, brightness, payload);
+      // Send to MLED device only if connected
+      if (this.mledConnected && this.mledSerialManager) {
+        try {
+          await this.mledSerialManager.sendFrame(line, brightness, payload);
+        } catch (error) {
+          console.error('MLED serial send error (ignoring for HDMI):', error);
+          // Don't throw - allow HDMI update to continue
+        }
       }
 
-      if (!this.hdmiEnabled) {
-        return;
-      }
+      // Update HDMI output if enabled
+      if (this.hdmiEnabled) {
+        // Convert line to number for comparison
+        const numLine = typeof line === 'number' ? line : parseInt(line);
 
-      // Convert line to number for comparison
-      const numLine = typeof line === 'number' ? line : parseInt(line);
+        // Only handle line 7 (mledLine) - skip Data Integrator lines (1-4)
+        if (numLine === this.mledLine || numLine === 7) {
+          // Extract text from payload (remove color codes)
+          let displayText = payload;
+          displayText = displayText.replace(/\^cs\s+\d+\^/g, ''); // Remove ^cs color codes
+          displayText = displayText.replace(/\^cp\s+\d+\s+\d+\s+\d+\^/g, ''); // Remove ^cp color codes
+          displayText = displayText.replace(/\^rt\s+\d+\s+/g, ''); // Remove ^rt real-time codes
+          displayText = displayText.replace(/\^cs\s+0\^/g, ''); // Remove trailing ^cs 0^
+          displayText = displayText.replace(/\^/g, ''); // Remove any remaining ^
+          displayText = displayText.trim();
 
-      // Only handle line 7 (mledLine) - skip Data Integrator lines (1-4)
-      if (numLine === this.mledLine || numLine === 7) {
-        // Extract text from payload (remove color codes)
-        let displayText = payload;
-        displayText = displayText.replace(/\^cs\s+\d+\^/g, ''); // Remove ^cs color codes
-        displayText = displayText.replace(/\^cp\s+\d+\s+\d+\s+\d+\^/g, ''); // Remove ^cp color codes
-        displayText = displayText.replace(/\^rt\s+\d+\s+/g, ''); // Remove ^rt real-time codes
-        displayText = displayText.replace(/\^cs\s+0\^/g, ''); // Remove trailing ^cs 0^
-        displayText = displayText.replace(/\^/g, ''); // Remove any remaining ^
-        displayText = displayText.trim();
+          console.log('📺 HDMI Update - Line:', numLine, 'Text:', displayText);
 
-        console.log('📺 HDMI Update - Line:', numLine, 'Text:', displayText);
-
-        this.hdmiPreviewText = displayText;
-        this.updateHdmiDisplay(displayText);
+          this.hdmiPreviewText = displayText;
+          this.updateHdmiDisplay(displayText);
+        }
       }
     },
 
@@ -2501,7 +2515,7 @@ createApp({
           );
 
           // Route running time to MLED via Timer LINK if enabled (update every 100ms to reduce traffic)
-          if (this.mledLinkEnabled && this.mledLinkToMled && this.mledConnected) {
+          if (this.mledLinkEnabled && this.mledLinkToMled && (this.mledConnected || this.hdmiEnabled)) {
             if (!this.mledLinkLastUpdate || Date.now() - this.mledLinkLastUpdate > 100) {
               this.routeTimerToMled(this.displayTime, "running");
               this.mledLinkLastUpdate = Date.now();
@@ -3270,8 +3284,8 @@ createApp({
     },
 
     async sendMledText() {
-      if (!this.mledConnected) {
-        alert("MLED not connected");
+      if (!this.mledConnected && !this.hdmiEnabled) {
+        alert("No display enabled. Please connect MLED or enable HDMI.");
         return;
       }
 
@@ -3287,6 +3301,13 @@ createApp({
       }
 
       this.stopMledScroll();
+      this.stopCountUp();
+      this.stopCountDown(); // Also cancel any pending auto-clear
+      // Cancel Timer LINK auto-clear
+      if (this.mledLinkClearTimer) {
+        clearTimeout(this.mledLinkClearTimer);
+        this.mledLinkClearTimer = null;
+      }
 
       // Rainbow mode
       if (this.mledRainbow) {
@@ -3317,8 +3338,8 @@ createApp({
     async clearMled() {
       console.log('🔴 clearMled called! Connected:', this.mledConnected);
 
-      if (!this.mledConnected) {
-        alert("MLED not connected");
+      if (!this.mledConnected && !this.hdmiEnabled) {
+        alert("No display enabled. Please connect MLED or enable HDMI.");
         return;
       }
 
@@ -3462,12 +3483,19 @@ createApp({
     },
 
     async runCoursewalk(n, minutes) {
-      if (!this.mledConnected) {
-        alert("MLED not connected");
+      if (!this.mledConnected && !this.hdmiEnabled) {
+        alert("No display enabled. Please connect MLED or enable HDMI.");
         return;
       }
 
       this.stopMledScroll(); // Stop any scrolling
+      this.stopCountUp(); // Stop count up timer
+      this.stopCountDown(); // Stop count down timer and auto-clear
+      // Cancel Timer LINK auto-clear
+      if (this.mledLinkClearTimer) {
+        clearTimeout(this.mledLinkClearTimer);
+        this.mledLinkClearTimer = null;
+      }
       this.mledCwCancel = false;
       this.mledCwTimers = [];
 
@@ -3482,8 +3510,8 @@ createApp({
     },
 
     async startCoursewalk() {
-      if (!this.mledConnected) {
-        alert("MLED not connected");
+      if (!this.mledConnected && !this.hdmiEnabled) {
+        alert("No display enabled. Please connect MLED or enable HDMI.");
         return;
       }
 
@@ -3549,8 +3577,8 @@ createApp({
     },
 
     async startCountUp() {
-      if (!this.mledConnected) {
-        alert("MLED not connected");
+      if (!this.mledConnected && !this.hdmiEnabled) {
+        alert("No display enabled. Please connect MLED or enable HDMI.");
         return;
       }
 
@@ -3563,6 +3591,11 @@ createApp({
       this.stopCountDown();
       this.stopMledScroll();
       this.stopCoursewalks();
+      // Cancel Timer LINK auto-clear
+      if (this.mledLinkClearTimer) {
+        clearTimeout(this.mledLinkClearTimer);
+        this.mledLinkClearTimer = null;
+      }
 
       this.mledUpStartTs = performance.now();
       this.mledUpTimer = setTimeout(() => this.tickUp(), 10);
@@ -3595,7 +3628,10 @@ createApp({
 
       if (remainSec <= 0) {
         this.stopCountDown();
-        // Timer completed
+        // Timer completed - auto-clear after configured hold time
+        this.mledDownClearTimer = setTimeout(() => {
+          this.clearMled();
+        }, this.mledDownHold * 1000);
       } else {
         this.mledDownTimer = setTimeout(() => this.tickDown(), 250);
       }
@@ -3606,11 +3642,15 @@ createApp({
         clearTimeout(this.mledDownTimer);
         this.mledDownTimer = null;
       }
+      if (this.mledDownClearTimer) {
+        clearTimeout(this.mledDownClearTimer);
+        this.mledDownClearTimer = null;
+      }
     },
 
     async startCountDown() {
-      if (!this.mledConnected) {
-        alert("MLED not connected");
+      if (!this.mledConnected && !this.hdmiEnabled) {
+        alert("No display enabled. Please connect MLED or enable HDMI.");
         return;
       }
 
@@ -3623,6 +3663,11 @@ createApp({
       this.stopCountDown();
       this.stopMledScroll();
       this.stopCoursewalks();
+      // Cancel Timer LINK auto-clear
+      if (this.mledLinkClearTimer) {
+        clearTimeout(this.mledLinkClearTimer);
+        this.mledLinkClearTimer = null;
+      }
 
       const hh = Number(this.mledDownHH) || 0;
       const mm = Number(this.mledDownMM) || 0;
@@ -3656,16 +3701,17 @@ createApp({
 
     // Timer LINK Methods
     async routeTimerToMled(timeStr, state) {
-      if (!this.mledLinkEnabled || !this.mledLinkToMled || !this.mledConnected) {
+      if (!this.mledLinkEnabled || !this.mledLinkToMled) {
         return;
       }
 
-      // Check if MLED serial manager is actually connected
-      if (!this.mledSerialManager || !this.mledSerialManager.isConnected()) {
-        console.warn("Timer LINK: MLED serial manager not connected, skipping");
-        this.mledLinkStatus = "MLED Display not connected";
+      // Check if at least one display is available
+      if (!this.mledConnected && !this.hdmiEnabled) {
         return;
       }
+
+      // MLED serial manager check is now optional - we can work with HDMI only
+      const hasMledSerial = this.mledSerialManager && this.mledSerialManager.isConnected();
 
       try {
         const colorCode = this.getMledColorCode(this.mledLinkColor);
@@ -3683,9 +3729,22 @@ createApp({
         this.mledActiveLabel = "Timer LINK";
 
         if (state === "running") {
+          // Clear any pending auto-clear timer when running
+          if (this.mledLinkClearTimer) {
+            clearTimeout(this.mledLinkClearTimer);
+            this.mledLinkClearTimer = null;
+          }
           this.mledLinkStatus = `Routing: ${timeStr} (Running)`;
         } else if (state === "finished") {
           this.mledLinkStatus = `Routed: ${timeStr} (Finished)`;
+          // Auto-clear after configured hold time
+          if (this.mledLinkClearTimer) {
+            clearTimeout(this.mledLinkClearTimer);
+          }
+          this.mledLinkClearTimer = setTimeout(() => {
+            this.clearMled();
+            this.mledLinkStatus = "Waiting for timer data...";
+          }, this.mledLinkHold * 1000);
         }
       } catch (error) {
         console.error("Timer LINK routing error:", error);

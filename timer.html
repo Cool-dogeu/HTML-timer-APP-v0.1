@@ -108,7 +108,7 @@
               @click="activeTab = 'display'"
             >
               <i class="material-icons" style="vertical-align: middle; font-size: 20px;">tv</i>
-              Display
+              FDS Display
             </button>
           </div>
         </div>
@@ -299,7 +299,7 @@
         <div class="mled-module" :class="{ disabled: !mledTextEnabled }">
           <div class="module-toggle">
             <label>
-              <input type="checkbox" v-model="mledTextEnabled" :disabled="!mledConnected" />
+              <input type="checkbox" v-model="mledTextEnabled" :disabled="!mledConnected && !hdmiEnabled" />
               Enable
             </label>
           </div>
@@ -354,7 +354,7 @@
         <div class="mled-module" :class="{ disabled: !mledCwEnabled }">
           <div class="module-toggle">
             <label>
-              <input type="checkbox" v-model="mledCwEnabled" :disabled="!mledConnected" />
+              <input type="checkbox" v-model="mledCwEnabled" :disabled="!mledConnected && !hdmiEnabled" />
               Enable
             </label>
           </div>
@@ -398,7 +398,7 @@
         <div class="mled-module" :class="{ disabled: !mledTimerEnabled }">
           <div class="module-toggle">
             <label>
-              <input type="checkbox" v-model="mledTimerEnabled" :disabled="!mledConnected" />
+              <input type="checkbox" v-model="mledTimerEnabled" :disabled="!mledConnected && !hdmiEnabled" />
               Enable
             </label>
           </div>
@@ -476,6 +476,17 @@
                   <option value="Deep pink">Deep pink</option>
                   <option value="Light Blue">Light Blue</option>
                 </select>
+                <label class="module-label" style="margin-left: 1rem;">Hold</label>
+                <select v-model.number="mledDownHold" class="mled-select" :disabled="!mledTimerEnabled">
+                  <option :value="1">1 s</option>
+                  <option :value="3">3 s</option>
+                  <option :value="5">5 s</option>
+                  <option :value="10">10 s</option>
+                  <option :value="15">15 s</option>
+                  <option :value="20">20 s</option>
+                  <option :value="30">30 s</option>
+                  <option :value="60">60 s</option>
+                </select>
               </div>
               <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
                 <button @click="startCountDown" class="btn btn-primary" :disabled="!mledTimerEnabled">Start</button>
@@ -489,15 +500,15 @@
         <div class="mled-module" :class="{ disabled: !mledLinkEnabled }">
           <div class="module-toggle">
             <label>
-              <input type="checkbox" v-model="mledLinkEnabled" :disabled="!mledConnected" />
+              <input type="checkbox" v-model="mledLinkEnabled" :disabled="!mledConnected && !hdmiEnabled" />
               Enable
             </label>
           </div>
           <div class="module-header">Timer LINK</div>
 
           <div style="padding: 1rem;">
-            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-              <label class="module-label" style="width: 140px;">Color:</label>
+            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+              <label class="module-label">Color</label>
               <select v-model="mledLinkColor" class="mled-select" :disabled="!mledLinkEnabled">
                 <option value="Red">Red</option>
                 <option value="Green">Green</option>
@@ -509,6 +520,17 @@
                 <option value="Orange">Orange</option>
                 <option value="Deep pink">Deep pink</option>
                 <option value="Light Blue">Light Blue</option>
+              </select>
+              <label class="module-label" style="margin-left: 1rem;">Hold</label>
+              <select v-model.number="mledLinkHold" class="mled-select" :disabled="!mledLinkEnabled">
+                <option :value="1">1 s</option>
+                <option :value="3">3 s</option>
+                <option :value="5">5 s</option>
+                <option :value="10">10 s</option>
+                <option :value="15">15 s</option>
+                <option :value="20">20 s</option>
+                <option :value="30">30 s</option>
+                <option :value="60">60 s</option>
               </select>
             </div>
 
