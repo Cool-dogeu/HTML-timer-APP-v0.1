@@ -305,19 +305,20 @@
           </div>
           <div class="module-header">MLED TEXT</div>
 
-          <div style="position: relative;">
-            <textarea
-              v-model="mledTextInput"
-              class="mled-textarea"
-              placeholder="max 64 bytes"
-              maxlength="64"
-              @input="updateMledCharCounter"
-            ></textarea>
-            <div class="char-counter">{{ mledCharsLeft }} left</div>
-          </div>
+          <div style="padding: 1rem;">
+            <div style="position: relative; margin-bottom: 1rem;">
+              <textarea
+                v-model="mledTextInput"
+                class="mled-textarea"
+                placeholder="max 64 bytes"
+                maxlength="64"
+                @input="updateMledCharCounter"
+              ></textarea>
+              <div class="char-counter">{{ mledCharsLeft }} left</div>
+            </div>
 
-          <div class="mled-controls" style="justify-content: space-between; margin-top: 12px;">
-            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <!-- Settings row -->
+            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
               <label class="module-label">Scroll speed</label>
               <div class="mled-radio-group">
                 <label><input type="radio" v-model="mledScrollSpeed" value="0" /> 0</label>
@@ -325,12 +326,8 @@
                 <label><input type="radio" v-model="mledScrollSpeed" value="2" /> 2</label>
                 <label><input type="radio" v-model="mledScrollSpeed" value="3" /> 3</label>
               </div>
-            </div>
 
-            <button @click="sendMledText" class="btn btn-primary">Send text</button>
-
-            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-              <label class="module-label">Text color</label>
+              <label class="module-label" style="margin-left: 1rem;">Text color</label>
               <select v-model="mledTextColor" class="mled-select">
                 <option value="Default">Default</option>
                 <option value="Red">Red</option>
@@ -345,6 +342,11 @@
                 <option value="Light Blue">Light Blue</option>
               </select>
             </div>
+
+            <!-- Buttons row -->
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+              <button @click="sendMledText" class="btn btn-primary">Send text</button>
+            </div>
           </div>
         </div>
 
@@ -358,29 +360,26 @@
           </div>
           <div class="module-header">Coursewalks</div>
 
-          <div class="mled-controls" style="gap: 1rem; flex-wrap: wrap;">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-              <label class="module-label">Version:</label>
+          <div style="padding: 1rem;">
+            <!-- Settings row -->
+            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+              <label class="module-label">Version</label>
               <select v-model="mledCwVersion" class="mled-select" :disabled="!mledCwEnabled">
                 <option value="1">CW1</option>
                 <option value="2">CW2</option>
                 <option value="3">CW3</option>
                 <option value="4">CW4</option>
               </select>
-            </div>
 
-            <div style="display: flex; align-items: center; gap: 1rem;">
-              <label class="module-label">Duration:</label>
+              <label class="module-label" style="margin-left: 1rem;">Duration</label>
               <select v-model="mledCwDuration" class="mled-select" :disabled="!mledCwEnabled">
                 <option value="7">7 min</option>
                 <option value="8">8 min</option>
                 <option value="9">9 min</option>
                 <option value="10">10 min</option>
               </select>
-            </div>
 
-            <div style="display: flex; align-items: center; gap: 1rem;">
-              <label class="module-label">Wait:</label>
+              <label class="module-label" style="margin-left: 1rem;">Wait</label>
               <select v-model="mledCwWait" class="mled-select" :disabled="!mledCwEnabled">
                 <option value="10">10 s</option>
                 <option value="20">20 s</option>
@@ -388,7 +387,10 @@
               </select>
             </div>
 
-            <button @click="startCoursewalk" class="btn btn-primary" :disabled="!mledCwEnabled">Start</button>
+            <!-- Buttons row -->
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+              <button @click="startCoursewalk" class="btn btn-primary" :disabled="!mledCwEnabled">Start</button>
+            </div>
           </div>
         </div>
 
@@ -402,77 +404,83 @@
           </div>
           <div class="module-header">Countdown</div>
 
-          <!-- Count Up -->
-          <div class="mled-controls" style="gap: 1rem; margin-bottom: 1rem;">
-            <label class="module-label">Count up</label>
-            <label class="module-label" style="margin-left: 12px;">Color</label>
-            <select v-model="mledUpColor" class="mled-select" :disabled="!mledTimerEnabled">
-              <option value="Red">Red</option>
-              <option value="Green">Green</option>
-              <option value="Blue">Blue</option>
-              <option value="Yellow">Yellow</option>
-              <option value="Magenta">Magenta</option>
-              <option value="Cyan">Cyan</option>
-              <option value="White">White</option>
-              <option value="Orange">Orange</option>
-              <option value="Deep pink">Deep pink</option>
-              <option value="Light Blue">Light Blue</option>
-            </select>
-            <button @click="startCountUp" class="btn btn-primary" :disabled="!mledTimerEnabled">Start</button>
-            <button @click="stopCountUp" class="btn btn-danger" :disabled="!mledTimerEnabled">Stop</button>
-          </div>
-
-          <!-- Count Down -->
-          <div class="module-section-container">
-            <div class="mled-controls" style="gap: 1rem; flex-wrap: wrap;">
-              <label class="module-label">Count down</label>
-              <label class="module-section-label">hh</label>
-              <input
-                v-model.number="mledDownHH"
-                type="number"
-                min="0"
-                max="1"
-                style="width: 60px;"
-                class="mled-select"
-                :disabled="!mledTimerEnabled"
-              />
-              <label class="module-label" style="margin-left: 12px;">mm</label>
-              <input
-                v-model.number="mledDownMM"
-                type="number"
-                min="0"
-                max="99"
-                style="width: 70px;"
-                class="mled-select"
-                :disabled="!mledTimerEnabled"
-              />
-              <label class="module-label">ss</label>
-              <input
-                v-model.number="mledDownSS"
-                type="number"
-                min="0"
-                max="59"
-                style="width: 70px;"
-                class="mled-select"
-                :disabled="!mledTimerEnabled"
-              />
-              <label class="module-label" style="margin-left: 12px;">Color</label>
-              <select v-model="mledDownColor" class="mled-select" :disabled="!mledTimerEnabled">
-                <option value="Red">Red</option>
-                <option value="Green">Green</option>
-                <option value="Blue">Blue</option>
-                <option value="Yellow">Yellow</option>
-                <option value="Magenta">Magenta</option>
-                <option value="Cyan">Cyan</option>
-                <option value="White">White</option>
-                <option value="Orange">Orange</option>
-                <option value="Deep pink">Deep pink</option>
-                <option value="Light Blue">Light Blue</option>
-              </select>
+          <div style="padding: 1rem;">
+            <!-- Count Up Section -->
+            <div style="margin-bottom: 1.5rem;">
+              <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                <label class="module-label">Count up</label>
+                <label class="module-label" style="margin-left: 1rem;">Color</label>
+                <select v-model="mledUpColor" class="mled-select" :disabled="!mledTimerEnabled">
+                  <option value="Red">Red</option>
+                  <option value="Green">Green</option>
+                  <option value="Blue">Blue</option>
+                  <option value="Yellow">Yellow</option>
+                  <option value="Magenta">Magenta</option>
+                  <option value="Cyan">Cyan</option>
+                  <option value="White">White</option>
+                  <option value="Orange">Orange</option>
+                  <option value="Deep pink">Deep pink</option>
+                  <option value="Light Blue">Light Blue</option>
+                </select>
+              </div>
+              <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <button @click="startCountUp" class="btn btn-primary" :disabled="!mledTimerEnabled">Start</button>
+                <button @click="stopCountUp" class="btn btn-danger" :disabled="!mledTimerEnabled">Stop</button>
+              </div>
             </div>
-            <div class="mled-controls" style="gap: 1rem; margin-top: 1rem;">
-              <button @click="startCountDown" class="btn btn-primary" :disabled="!mledTimerEnabled">Start</button>
-              <button @click="stopCountDown" class="btn btn-danger" :disabled="!mledTimerEnabled">Stop</button>
+
+            <!-- Count Down Section -->
+            <div class="module-section-container">
+              <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                <label class="module-label">Count down</label>
+                <label class="module-section-label">hh</label>
+                <input
+                  v-model.number="mledDownHH"
+                  type="number"
+                  min="0"
+                  max="1"
+                  style="width: 60px;"
+                  class="mled-select"
+                  :disabled="!mledTimerEnabled"
+                />
+                <label class="module-label">mm</label>
+                <input
+                  v-model.number="mledDownMM"
+                  type="number"
+                  min="0"
+                  max="99"
+                  style="width: 70px;"
+                  class="mled-select"
+                  :disabled="!mledTimerEnabled"
+                />
+                <label class="module-label">ss</label>
+                <input
+                  v-model.number="mledDownSS"
+                  type="number"
+                  min="0"
+                  max="59"
+                  style="width: 70px;"
+                  class="mled-select"
+                  :disabled="!mledTimerEnabled"
+                />
+                <label class="module-label" style="margin-left: 1rem;">Color</label>
+                <select v-model="mledDownColor" class="mled-select" :disabled="!mledTimerEnabled">
+                  <option value="Red">Red</option>
+                  <option value="Green">Green</option>
+                  <option value="Blue">Blue</option>
+                  <option value="Yellow">Yellow</option>
+                  <option value="Magenta">Magenta</option>
+                  <option value="Cyan">Cyan</option>
+                  <option value="White">White</option>
+                  <option value="Orange">Orange</option>
+                  <option value="Deep pink">Deep pink</option>
+                  <option value="Light Blue">Light Blue</option>
+                </select>
+              </div>
+              <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <button @click="startCountDown" class="btn btn-primary" :disabled="!mledTimerEnabled">Start</button>
+                <button @click="stopCountDown" class="btn btn-danger" :disabled="!mledTimerEnabled">Stop</button>
+              </div>
             </div>
           </div>
         </div>
