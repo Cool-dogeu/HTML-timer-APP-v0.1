@@ -641,15 +641,7 @@ createApp({
       if (this.isInitializing) return;
 
       if (newVal === true && oldVal === false) {
-        // Enabling - show confirmation and disable other modules
-        const confirmed = confirm('Enabling MLED Text will disable other modules (Coursewalks, Countdown, Timer LINK, Data Integrator). Continue?');
-        if (!confirmed) {
-          this.$nextTick(() => {
-            this.mledTextEnabled = false;
-          });
-          return;
-        }
-        // Disable other modules
+        // Enabling - disable other modules
         this.mledCwEnabled = false;
         this.mledTimerEnabled = false;
         this.mledLinkEnabled = false;
@@ -669,15 +661,7 @@ createApp({
       if (this.isInitializing) return;
 
       if (newVal === true && oldVal === false) {
-        // Enabling - show confirmation and disable other modules
-        const confirmed = confirm('Enabling Coursewalks will disable other modules (MLED Text, Countdown, Timer LINK, Data Integrator). Continue?');
-        if (!confirmed) {
-          this.$nextTick(() => {
-            this.mledCwEnabled = false;
-          });
-          return;
-        }
-        // Disable other modules
+        // Enabling - disable other modules
         this.mledTextEnabled = false;
         this.mledTimerEnabled = false;
         this.mledLinkEnabled = false;
@@ -697,15 +681,7 @@ createApp({
       if (this.isInitializing) return;
 
       if (newVal === true && oldVal === false) {
-        // Enabling - show confirmation and disable other modules
-        const confirmed = confirm('Enabling Countdown will disable other modules (MLED Text, Coursewalks, Timer LINK, Data Integrator). Continue?');
-        if (!confirmed) {
-          this.$nextTick(() => {
-            this.mledTimerEnabled = false;
-          });
-          return;
-        }
-        // Disable other modules
+        // Enabling - disable other modules
         this.mledTextEnabled = false;
         this.mledCwEnabled = false;
         this.mledLinkEnabled = false;
@@ -725,15 +701,7 @@ createApp({
       if (this.isInitializing) return;
 
       if (newVal === true && oldVal === false) {
-        // Enabling - show confirmation and disable other modules
-        const confirmed = confirm('Enabling Timer LINK will disable other modules (MLED Text, Coursewalks, Countdown, Data Integrator). Continue?');
-        if (!confirmed) {
-          this.$nextTick(() => {
-            this.mledLinkEnabled = false;
-          });
-          return;
-        }
-        // Disable other modules
+        // Enabling - disable other modules
         this.mledTextEnabled = false;
         this.mledCwEnabled = false;
         this.mledTimerEnabled = false;
@@ -753,15 +721,7 @@ createApp({
       if (this.isInitializing) return;
 
       if (newVal === true && oldVal === false) {
-        // Enabling - show confirmation and disable other modules
-        const confirmed = confirm('Enabling Data Integrator will disable other modules (MLED Text, Coursewalks, Countdown, Timer LINK). Continue?');
-        if (!confirmed) {
-          this.$nextTick(() => {
-            this.mledDataEnabled = false;
-          });
-          return;
-        }
-        // Disable other modules
+        // Enabling - disable other modules
         this.mledTextEnabled = false;
         this.mledCwEnabled = false;
         this.mledTimerEnabled = false;
@@ -1275,9 +1235,9 @@ createApp({
           localStorage.setItem('timerDeviceInfo', JSON.stringify(this.timerDeviceInfo));
           this.persistSettings();
         } catch (error) {
-          if (error.name !== "NotFoundError") {
-            // User cancelled
-            alert("Failed to connect: " + error.message);
+          // Show alert only for actual connection errors (not user cancellation)
+          if (error.name !== 'NotFoundError' && error.name !== 'AbortError') {
+            alert('Unable to connect to Timer device.\n\nPossible reasons:\n• Device is already in use by another application\n• USB cable is disconnected\n• Device requires drivers to be installed\n\nPlease check the connection and try again.');
           }
           this.selectedPort = null;
           this.lastConnectedPort = null;
@@ -3141,9 +3101,14 @@ createApp({
             }, 1000);
           }
         } catch (error) {
-          // User cancelled or connection error - silently fail
+          // Check if user cancelled or if it's an actual connection error
           console.error("MLED connection error:", error);
           this.mledPort = null;
+
+          // Show alert only for actual connection errors (not user cancellation)
+          if (error.name !== 'NotFoundError' && error.name !== 'AbortError') {
+            alert('Unable to connect to MLED display.\n\nPossible reasons:\n• Device is already in use by another application\n• USB cable is disconnected\n• Device requires drivers to be installed\n\nPlease check the connection and try again.');
+          }
         }
       }
     },
