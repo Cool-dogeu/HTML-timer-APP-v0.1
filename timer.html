@@ -549,6 +549,93 @@
             </div>
           </div>
         </div>
+
+        <!-- HDMI Module -->
+        <div class="mled-module" :class="{ disabled: !hdmiEnabled }">
+          <div class="module-toggle">
+            <label>
+              <input type="checkbox" v-model="hdmiEnabled" />
+              Enable
+            </label>
+          </div>
+          <div class="module-header">HDMI</div>
+
+          <div style="padding: 1rem;">
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+              <button @click="openHdmiWindow" class="btn btn-primary" :disabled="!hdmiEnabled">
+                <i class="material-icons">open_in_new</i>
+                Open output
+              </button>
+              <button @click="fullscreenHdmi" class="btn btn-secondary" :disabled="!hdmiEnabled">
+                <i class="material-icons">fullscreen</i>
+                Fullscreen
+              </button>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+              <label class="module-label">Background</label>
+              <select v-model="hdmiBackgroundColor" class="mled-select" :disabled="!hdmiEnabled" @change="applyHdmiStyles">
+                <option value="#000000">Black</option>
+                <option value="#111111">Dark gray</option>
+                <option value="#ffffff">White</option>
+                <option value="#ef4444">Red</option>
+                <option value="#22c55e">Green</option>
+                <option value="#3b82f6">Blue</option>
+                <option value="#fde047">Yellow</option>
+                <option value="#22d3ee">Cyan</option>
+                <option value="#f472b6">Rose</option>
+              </select>
+
+              <label class="module-label" style="margin-left: 1rem;">Font color</label>
+              <select v-model="hdmiForegroundColor" class="mled-select" :disabled="!hdmiEnabled" @change="applyHdmiStyles">
+                <option value="#ffffff">White</option>
+                <option value="#e5e7eb">Off-white</option>
+                <option value="#000000">Black</option>
+                <option value="#ef4444">Red</option>
+                <option value="#22c55e">Green</option>
+                <option value="#3b82f6">Blue</option>
+                <option value="#fde047">Yellow</option>
+                <option value="#22d3ee">Cyan</option>
+                <option value="#fb923c">Orange</option>
+                <option value="#60a5fa">Sky</option>
+                <option value="#a78bfa">Purple</option>
+              </select>
+
+              <label class="module-label" style="margin-left: 1rem;">Font size</label>
+              <select v-model="hdmiFontSize" class="mled-select" :disabled="!hdmiEnabled" @change="applyHdmiStyles">
+                <option value="64px">64 px</option>
+                <option value="80px">80 px</option>
+                <option value="96px">96 px</option>
+                <option value="120px">120 px</option>
+                <option value="160px">160 px</option>
+                <option value="180px">180 px</option>
+                <option value="200px">200 px</option>
+                <option value="240px">240 px</option>
+                <option value="280px">280 px</option>
+                <option value="320px">320 px</option>
+              </select>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+              <small style="color: var(--text-secondary); font-size: 0.85rem;">
+                Displays content from line 7 (Coursewalk, Countdown, Timer LINK, MLED Text)
+              </small>
+            </div>
+
+            <div class="module-section-container" :style="{ background: hdmiBackgroundColor }">
+              <div :style="{
+                color: hdmiForegroundColor,
+                fontSize: '32px',
+                fontFamily: 'Helvetica, Arial, sans-serif',
+                whiteSpace: 'nowrap',
+                letterSpacing: '1px',
+                textAlign: 'center',
+                padding: '1rem',
+                overflowX: 'auto'
+              }">{{ hdmiPreviewText }}</div>
+            </div>
+          </div>
+        </div>
       </div>
       </div><!-- Close app-content-wrapper -->
 

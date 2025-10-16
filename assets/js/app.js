@@ -604,6 +604,15 @@ createApp({
       mledPort: null,  // Currently connected MLED port
       timerDeviceInfo: null, // VID/PID of timer device
       mledDeviceInfo: null,  // VID/PID of MLED device
+      // HDMI output
+      hdmiEnabled: false,
+      hdmiWindow: null,
+      hdmiBackgroundColor: '#000000',
+      hdmiForegroundColor: '#ffffff',
+      hdmiFontSize: '320px',
+      hdmiPreviewText: 'HDMI preview',
+      // Initialization flag to prevent confirmations during load
+      isInitializing: true,
     };
   },
   computed: {
@@ -628,6 +637,9 @@ createApp({
   watch: {
     // Auto-clear display when disabling modules
     mledTextEnabled(newVal, oldVal) {
+      // Skip during initialization to prevent confirmations on page load
+      if (this.isInitializing) return;
+
       if (newVal === true && oldVal === false) {
         // Enabling - show confirmation and disable other modules
         const confirmed = confirm('Enabling MLED Text will disable other modules (Coursewalks, Countdown, Timer LINK, Data Integrator). Continue?');
@@ -642,12 +654,20 @@ createApp({
         this.mledTimerEnabled = false;
         this.mledLinkEnabled = false;
         this.mledDataEnabled = false;
-      } else if (oldVal === true && newVal === false && this.mledConnected) {
+      }
+
+      // Save settings to update enabled state in localStorage
+      this.saveMledSettings();
+
+      if (oldVal === true && newVal === false && this.mledConnected) {
         console.log('Text module disabled - clearing display');
         this.clearMled();
       }
     },
     mledCwEnabled(newVal, oldVal) {
+      // Skip during initialization to prevent confirmations on page load
+      if (this.isInitializing) return;
+
       if (newVal === true && oldVal === false) {
         // Enabling - show confirmation and disable other modules
         const confirmed = confirm('Enabling Coursewalks will disable other modules (MLED Text, Countdown, Timer LINK, Data Integrator). Continue?');
@@ -662,12 +682,20 @@ createApp({
         this.mledTimerEnabled = false;
         this.mledLinkEnabled = false;
         this.mledDataEnabled = false;
-      } else if (oldVal === true && newVal === false && this.mledConnected) {
+      }
+
+      // Save settings to update enabled state in localStorage
+      this.saveMledSettings();
+
+      if (oldVal === true && newVal === false && this.mledConnected) {
         console.log('Coursewalks module disabled - clearing display');
         this.clearMled();
       }
     },
     mledTimerEnabled(newVal, oldVal) {
+      // Skip during initialization to prevent confirmations on page load
+      if (this.isInitializing) return;
+
       if (newVal === true && oldVal === false) {
         // Enabling - show confirmation and disable other modules
         const confirmed = confirm('Enabling Countdown will disable other modules (MLED Text, Coursewalks, Timer LINK, Data Integrator). Continue?');
@@ -682,12 +710,20 @@ createApp({
         this.mledCwEnabled = false;
         this.mledLinkEnabled = false;
         this.mledDataEnabled = false;
-      } else if (oldVal === true && newVal === false && this.mledConnected) {
+      }
+
+      // Save settings to update enabled state in localStorage
+      this.saveMledSettings();
+
+      if (oldVal === true && newVal === false && this.mledConnected) {
         console.log('Timer module disabled - clearing display');
         this.clearMled();
       }
     },
     mledLinkEnabled(newVal, oldVal) {
+      // Skip during initialization to prevent confirmations on page load
+      if (this.isInitializing) return;
+
       if (newVal === true && oldVal === false) {
         // Enabling - show confirmation and disable other modules
         const confirmed = confirm('Enabling Timer LINK will disable other modules (MLED Text, Coursewalks, Countdown, Data Integrator). Continue?');
@@ -702,12 +738,20 @@ createApp({
         this.mledCwEnabled = false;
         this.mledTimerEnabled = false;
         this.mledDataEnabled = false;
-      } else if (oldVal === true && newVal === false && this.mledConnected) {
+      }
+
+      // Save settings to update enabled state in localStorage
+      this.saveMledSettings();
+
+      if (oldVal === true && newVal === false && this.mledConnected) {
         console.log('Timer LINK module disabled - clearing status');
         this.mledLinkStatus = "Waiting for timer data...";
       }
     },
     mledDataEnabled(newVal, oldVal) {
+      // Skip during initialization to prevent confirmations on page load
+      if (this.isInitializing) return;
+
       if (newVal === true && oldVal === false) {
         // Enabling - show confirmation and disable other modules
         const confirmed = confirm('Enabling Data Integrator will disable other modules (MLED Text, Coursewalks, Countdown, Timer LINK). Continue?');
@@ -727,7 +771,12 @@ createApp({
         this.stopCoursewalks();
         this.stopCountUp();
         this.stopCountDown();
-      } else if (oldVal === true && newVal === false) {
+      }
+
+      // Save settings to update enabled state in localStorage
+      this.saveMledSettings();
+
+      if (oldVal === true && newVal === false) {
         // Stop JSON polling and URL auto-update when disabled
         this.stopDataPolling();
         if (this.mledDataAutoUpdate) {
@@ -762,7 +811,7 @@ createApp({
         if (this.mledDataLast.z1 && this.mledDataDorsal) {
           const dorsal = this.mledDataDorsal.replace(/\D/g, '').slice(0, 3).padStart(3, '0');
           const payload1 = `^cp 1 4 7^${dorsal}`;
-          await this.mledSerialManager.sendFrame(this.mledDataLine1, this.mledBrightness, payload1);
+          await this.sendMledFrame(this.mledDataLine1, this.mledBrightness, payload1);
         }
 
         if (this.mledDataLast.z2 && (this.mledDataHandler || this.mledDataDog)) {
@@ -775,7 +824,7 @@ createApp({
             payload2 = `^cs 7^${handler.slice(0, 58)}`;
           }
           if (payload2) {
-            await this.mledSerialManager.sendFrame(this.mledDataLine2, this.mledBrightness, payload2);
+            await this.sendMledFrame(this.mledDataLine2, this.mledBrightness, payload2);
           }
         }
 
@@ -790,14 +839,14 @@ createApp({
             const rd = (!r) ? '^cp 4 5 2^R^ic 3 2^' : `^cp 5 9 1^R${r}`;
             payload3 = fd + rd;
           }
-          await this.mledSerialManager.sendFrame(this.mledDataLine3, this.mledBrightness, payload3);
+          await this.sendMledFrame(this.mledDataLine3, this.mledBrightness, payload3);
         }
 
         if (this.mledDataLast.z4 && this.mledDataCountry) {
           const country = this.sanitizeMledText(this.mledDataCountry);
           const payload4 = `^cs 7^${country}`;
           if (payload4) {
-            await this.mledSerialManager.sendFrame(this.mledDataLine4, this.mledBrightness, payload4);
+            await this.sendMledFrame(this.mledDataLine4, this.mledBrightness, payload4);
           }
         }
       }
@@ -929,24 +978,25 @@ createApp({
         const mledSettings = JSON.parse(savedMledSettings);
         // Apply saved MLED settings
         if (mledSettings.brightness !== undefined) this.mledBrightness = mledSettings.brightness;
-        if (mledSettings.textEnabled !== undefined) this.mledTextEnabled = mledSettings.textEnabled;
         if (mledSettings.textInput !== undefined) this.mledTextInput = mledSettings.textInput;
         if (mledSettings.textColor !== undefined) this.mledTextColor = mledSettings.textColor;
         if (mledSettings.scrollSpeed !== undefined) this.mledScrollSpeed = mledSettings.scrollSpeed;
-        if (mledSettings.cwEnabled !== undefined) this.mledCwEnabled = mledSettings.cwEnabled;
         if (mledSettings.cwVersion !== undefined) this.mledCwVersion = mledSettings.cwVersion;
         if (mledSettings.cwDuration !== undefined) this.mledCwDuration = mledSettings.cwDuration;
         if (mledSettings.cwWait !== undefined) this.mledCwWait = mledSettings.cwWait;
-        if (mledSettings.timerEnabled !== undefined) this.mledTimerEnabled = mledSettings.timerEnabled;
         if (mledSettings.upColor !== undefined) this.mledUpColor = mledSettings.upColor;
         if (mledSettings.downColor !== undefined) this.mledDownColor = mledSettings.downColor;
         if (mledSettings.downHH !== undefined) this.mledDownHH = mledSettings.downHH;
         if (mledSettings.downMM !== undefined) this.mledDownMM = mledSettings.downMM;
         if (mledSettings.downSS !== undefined) this.mledDownSS = mledSettings.downSS;
-        if (mledSettings.linkEnabled !== undefined) this.mledLinkEnabled = mledSettings.linkEnabled;
         if (mledSettings.linkColor !== undefined) this.mledLinkColor = mledSettings.linkColor;
-        if (mledSettings.dataEnabled !== undefined) this.mledDataEnabled = mledSettings.dataEnabled;
         if (mledSettings.dataUrl !== undefined) this.mledDataUrl = mledSettings.dataUrl;
+        // Load enabled states - only if explicitly saved as true
+        if (mledSettings.textEnabled === true) this.mledTextEnabled = true;
+        if (mledSettings.cwEnabled === true) this.mledCwEnabled = true;
+        if (mledSettings.timerEnabled === true) this.mledTimerEnabled = true;
+        if (mledSettings.linkEnabled === true) this.mledLinkEnabled = true;
+        if (mledSettings.dataEnabled === true) this.mledDataEnabled = true;
         if (mledSettings.activeLabel !== undefined) this.mledActiveLabel = mledSettings.activeLabel;
         if (mledSettings.lastPayload !== undefined) this.mledLastPayload = mledSettings.lastPayload;
         console.log('MLED settings loaded from localStorage');
@@ -1098,7 +1148,7 @@ createApp({
           console.log('✅ MLED display auto-reconnected successfully');
 
           // Send welcome message
-          await this.mledSerialManager.sendFrame(
+          await this.sendMledFrame(
             this.mledBrightness,
             this.mledBrightness,
             "   Connected!   "
@@ -1108,6 +1158,9 @@ createApp({
         }
       }
     });
+
+    // Initialization complete - enable watcher confirmations
+    this.isInitializing = false;
   },
   beforeUnmount() {
     // Clean up intervals when component is destroyed
@@ -1139,28 +1192,32 @@ createApp({
     saveMledSettings() {
       const mledSettings = {
         brightness: this.mledBrightness,
-        textEnabled: this.mledTextEnabled,
+        // Only save enabled states if they're true (when disabled, don't save them)
         textInput: this.mledTextInput,
         textColor: this.mledTextColor,
         scrollSpeed: this.mledScrollSpeed,
-        cwEnabled: this.mledCwEnabled,
         cwVersion: this.mledCwVersion,
         cwDuration: this.mledCwDuration,
         cwWait: this.mledCwWait,
-        timerEnabled: this.mledTimerEnabled,
         upColor: this.mledUpColor,
         downColor: this.mledDownColor,
         downHH: this.mledDownHH,
         downMM: this.mledDownMM,
         downSS: this.mledDownSS,
-        linkEnabled: this.mledLinkEnabled,
         linkColor: this.mledLinkColor,
-        dataEnabled: this.mledDataEnabled,
         dataUrl: this.mledDataUrl,
         // Save the last active state
         activeLabel: this.mledActiveLabel,
         lastPayload: this.mledLastPayload
       };
+
+      // Only save enabled states if they're true
+      if (this.mledTextEnabled) mledSettings.textEnabled = true;
+      if (this.mledCwEnabled) mledSettings.cwEnabled = true;
+      if (this.mledTimerEnabled) mledSettings.timerEnabled = true;
+      if (this.mledLinkEnabled) mledSettings.linkEnabled = true;
+      if (this.mledDataEnabled) mledSettings.dataEnabled = true;
+
       localStorage.setItem("mledSettings", JSON.stringify(mledSettings));
     },
 
@@ -1947,6 +2004,147 @@ createApp({
     },
 
 
+    // HDMI Output Methods
+    async sendMledFrame(line, brightness, payload) {
+      // Send to MLED device
+      if (this.mledSerialManager) {
+        await this.mledSerialManager.sendFrame(line, brightness, payload);
+      }
+
+      if (!this.hdmiEnabled) {
+        return;
+      }
+
+      // Convert line to number for comparison
+      const numLine = typeof line === 'number' ? line : parseInt(line);
+
+      // Only handle line 7 (mledLine) - skip Data Integrator lines (1-4)
+      if (numLine === this.mledLine || numLine === 7) {
+        // Extract text from payload (remove color codes)
+        let displayText = payload;
+        displayText = displayText.replace(/\^cs\s+\d+\^/g, ''); // Remove ^cs color codes
+        displayText = displayText.replace(/\^cp\s+\d+\s+\d+\s+\d+\^/g, ''); // Remove ^cp color codes
+        displayText = displayText.replace(/\^rt\s+\d+\s+/g, ''); // Remove ^rt real-time codes
+        displayText = displayText.replace(/\^cs\s+0\^/g, ''); // Remove trailing ^cs 0^
+        displayText = displayText.replace(/\^/g, ''); // Remove any remaining ^
+        displayText = displayText.trim();
+
+        console.log('📺 HDMI Update - Line:', numLine, 'Text:', displayText);
+
+        this.hdmiPreviewText = displayText;
+        this.updateHdmiDisplay(displayText);
+      }
+    },
+
+    openHdmiWindow() {
+      if (!this.hdmiEnabled) {
+        alert('HDMI is not enabled. Please enable it first.');
+        return;
+      }
+
+      const win = window.open('about:blank', 'MLED_HDMI');
+      if (!win) {
+        alert('Popup blocked. Please allow popups for this site.');
+        return;
+      }
+
+      this.hdmiWindow = win;
+
+      const htmlDoc = `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>HDMI Output</title>
+  <style>
+    html, body, #hdmiWrap {
+      width: 100vw;
+      height: 100vh;
+      margin: 0;
+    }
+    #hdmiWrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: ${this.hdmiBackgroundColor};
+    }
+    #hdmiText {
+      font-family: Helvetica, Arial, sans-serif;
+      white-space: nowrap;
+      letter-spacing: 1px;
+      text-align: center;
+      color: ${this.hdmiForegroundColor};
+      font-size: ${this.hdmiFontSize};
+    }
+  </style>
+</head>
+<body>
+  <div id="hdmiWrap">
+    <div id="hdmiText"></div>
+  </div>
+</body>
+</html>`;
+
+      win.document.open();
+      win.document.write(htmlDoc);
+      win.document.close();
+
+      try {
+        win.focus();
+      } catch (e) {
+        console.log('Could not focus HDMI window:', e);
+      }
+
+      // Update with current preview text
+      this.updateHdmiDisplay(this.hdmiPreviewText);
+    },
+
+    fullscreenHdmi() {
+      if (!this.hdmiWindow || this.hdmiWindow.closed) {
+        this.openHdmiWindow();
+      }
+      try {
+        const docEl = this.hdmiWindow.document.documentElement;
+        if (docEl.requestFullscreen) {
+          docEl.requestFullscreen();
+        }
+      } catch (e) {
+        console.log('Fullscreen failed:', e);
+      }
+    },
+
+    updateHdmiDisplay(text) {
+      if (this.hdmiWindow && !this.hdmiWindow.closed) {
+        const textEl = this.hdmiWindow.document.getElementById('hdmiText');
+        if (textEl) {
+          textEl.textContent = text || '';
+          textEl.style.fontSize = this.hdmiFontSize;
+          console.log('✅ HDMI text updated:', text);
+        }
+      }
+    },
+
+    applyHdmiStyles() {
+      // Update preview
+      this.hdmiPreviewText = this.hdmiPreviewText; // Trigger reactivity
+
+      // Update HDMI window if open
+      if (this.hdmiWindow && !this.hdmiWindow.closed) {
+        const doc = this.hdmiWindow.document;
+        doc.body.style.background = this.hdmiBackgroundColor;
+
+        const wrap = doc.getElementById('hdmiWrap');
+        if (wrap) {
+          wrap.style.background = this.hdmiBackgroundColor;
+        }
+
+        const textEl = doc.getElementById('hdmiText');
+        if (textEl) {
+          textEl.style.color = this.hdmiForegroundColor;
+          textEl.style.fontSize = this.hdmiFontSize;
+        }
+      }
+    },
+
     async openPictureInPicture() {
       try {
         // Check if API is supported
@@ -2560,7 +2758,7 @@ createApp({
                   console.log('✅ MLED display auto-reconnected successfully');
 
                   // Send welcome message
-                  await this.mledSerialManager.sendFrame(
+                  await this.sendMledFrame(
                     this.mledBrightness,
                     this.mledBrightness,
                     "   Reconnected!   "
@@ -2855,15 +3053,15 @@ createApp({
 
             // Send welcome message after successful auto-connection
             if (this.mledConnected) {
-              await this.mledSerialManager.sendFrame(this.mledLine, this.mledBrightness, "^cs 2^FDS MLED^cs 0^");
+              await this.sendMledFrame(this.mledLine, this.mledBrightness, "^cs 2^FDS MLED^cs 0^");
               setTimeout(async () => {
                 if (this.mledConnected) {
                   // Clear the display first
-                  await this.mledSerialManager.sendFrame(this.mledLine, this.mledBrightness, "");
+                  await this.sendMledFrame(this.mledLine, this.mledBrightness, "");
                   // Then restore last payload if it exists
                   if (this.mledLastPayload) {
                     console.log('Restoring last MLED display state after auto-connection...');
-                    await this.mledSerialManager.sendFrame(this.mledLine, this.mledBrightness, this.mledLastPayload);
+                    await this.sendMledFrame(this.mledLine, this.mledBrightness, this.mledLastPayload);
                   }
                 }
               }, 1000);
@@ -2929,15 +3127,15 @@ createApp({
           // Send welcome message after successful connection
           if (this.mledConnected) {
             // Display "FDS MLED" in green for 1 second
-            await this.mledSerialManager.sendFrame(this.mledLine, this.mledBrightness, "^cs 2^FDS MLED^cs 0^");
+            await this.sendMledFrame(this.mledLine, this.mledBrightness, "^cs 2^FDS MLED^cs 0^");
             setTimeout(async () => {
               if (this.mledConnected) {
                 // Clear the display first
-                await this.mledSerialManager.sendFrame(this.mledLine, this.mledBrightness, "");
+                await this.sendMledFrame(this.mledLine, this.mledBrightness, "");
                 // Then restore last payload if it exists
                 if (this.mledLastPayload) {
                   console.log('Restoring last MLED display state after manual connection...');
-                  await this.mledSerialManager.sendFrame(this.mledLine, this.mledBrightness, this.mledLastPayload);
+                  await this.sendMledFrame(this.mledLine, this.mledBrightness, this.mledLastPayload);
                 }
               }
             }, 1000);
@@ -3036,7 +3234,7 @@ createApp({
       // Update preview
       this.mledPreviewText = truncated;
 
-      await this.mledSerialManager.sendFrame(
+      await this.sendMledFrame(
         this.mledLine,
         this.mledBrightness,
         payload
@@ -3176,7 +3374,7 @@ createApp({
         this.stopCountDown();
 
         // Send empty payload to clear main line
-        await this.mledSerialManager.sendFrame(
+        await this.sendMledFrame(
           this.mledLine,
           this.mledBrightness,
           " "
@@ -3211,10 +3409,10 @@ createApp({
         });
 
         // Then clear all Data Integrator MLED lines (1-4)
-        await this.mledSerialManager.sendFrame(this.mledDataLine1, this.mledBrightness, " ");
-        await this.mledSerialManager.sendFrame(this.mledDataLine2, this.mledBrightness, " ");
-        await this.mledSerialManager.sendFrame(this.mledDataLine3, this.mledBrightness, " ");
-        await this.mledSerialManager.sendFrame(this.mledDataLine4, this.mledBrightness, " ");
+        await this.sendMledFrame(this.mledDataLine1, this.mledBrightness, " ");
+        await this.sendMledFrame(this.mledDataLine2, this.mledBrightness, " ");
+        await this.sendMledFrame(this.mledDataLine3, this.mledBrightness, " ");
+        await this.sendMledFrame(this.mledDataLine4, this.mledBrightness, " ");
 
         console.log('🧹 All Data Integrator MLED lines cleared');
 
@@ -3267,7 +3465,7 @@ createApp({
 
       // Show "soon" message
       const soonPayload = this.cwDualColor(label, 3, "soon", 2);
-      await this.mledSerialManager.sendFrame(this.mledLine, this.mledBrightness, soonPayload);
+      await this.sendMledFrame(this.mledLine, this.mledBrightness, soonPayload);
       this.mledPreviewText = `${label} soon`;
       this.mledActiveLabel = "Coursewalks";
 
@@ -3281,7 +3479,7 @@ createApp({
         if (this.mledCwCancel) return;
         const disp = this.cwFormatMSS(t);
         const payload = this.cwMixColor(label, disp, 3, 9);
-        await this.mledSerialManager.sendFrame(this.mledLine, this.mledBrightness, payload);
+        await this.sendMledFrame(this.mledLine, this.mledBrightness, payload);
         this.mledPreviewText = `${label} ${disp}`;
         await this.cwSleep(1000);
       }
@@ -3290,7 +3488,7 @@ createApp({
 
       // Show "END" message
       const endPayload = this.cwDualColor(label, 3, "END", 1);
-      await this.mledSerialManager.sendFrame(this.mledLine, this.mledBrightness, endPayload);
+      await this.sendMledFrame(this.mledLine, this.mledBrightness, endPayload);
       this.mledPreviewText = `${label} END`;
 
       // Wait after ending
@@ -3353,7 +3551,7 @@ createApp({
       const payload = `^cs ${colorCode}^${text}^cs 0^`;
 
       try {
-        await this.mledSerialManager.sendFrame(this.mledLine, this.mledBrightness, payload);
+        await this.sendMledFrame(this.mledLine, this.mledBrightness, payload);
         this.mledPreviewText = text;
         this.mledActiveLabel = "Timer Up";
       } catch (error) {
@@ -3374,7 +3572,7 @@ createApp({
         setTimeout(async () => {
           if (!this.mledUpTimer) { // Only if still stopped
             try {
-              await this.mledSerialManager.sendFrame(this.mledLine, this.mledBrightness, " ");
+              await this.sendMledFrame(this.mledLine, this.mledBrightness, " ");
               this.mledPreviewText = "";
               this.mledActiveLabel = "Idle";
             } catch (error) {
@@ -3421,7 +3619,7 @@ createApp({
       const payload = `^cs ${this.mledDownColorCode}^${fmt}^cs 0^`;
 
       try {
-        await this.mledSerialManager.sendFrame(this.mledLine, this.mledBrightness, payload);
+        await this.sendMledFrame(this.mledLine, this.mledBrightness, payload);
         this.mledPreviewText = fmt;
         this.mledActiveLabel = "Timer Down";
       } catch (error) {
@@ -3480,7 +3678,7 @@ createApp({
       // Send initial countdown with MLED rt command for device countdown
       const payload = `^cs ${this.mledDownColorCode}^^rt 2 ${fmt}^^cs 0^`;
       try {
-        await this.mledSerialManager.sendFrame(this.mledLine, this.mledBrightness, payload);
+        await this.sendMledFrame(this.mledLine, this.mledBrightness, payload);
       } catch (error) {
         console.error("Countdown start error:", error);
         return;
@@ -3509,7 +3707,7 @@ createApp({
         const payload = `^cs ${colorCode}^${timeStr}^cs 0^`;
 
         // Send to configured MLED line (not the global mledLine)
-        await this.mledSerialManager.sendFrame(
+        await this.sendMledFrame(
           this.mledLinkLine,
           this.mledBrightness,
           payload
@@ -3728,7 +3926,7 @@ createApp({
         const dorsal = this.mledDataDorsal.replace(/\D/g, '').slice(0, 3).padStart(3, '0');
         const payload1 = `^cp 1 4 7^${dorsal}`;
         if (payload1 !== this.mledDataLast.z1) {
-          await this.mledSerialManager.sendFrame(this.mledDataLine1, this.mledBrightness, payload1);
+          await this.sendMledFrame(this.mledDataLine1, this.mledBrightness, payload1);
           this.mledDataLast.z1 = payload1;
         }
       }
@@ -3745,9 +3943,9 @@ createApp({
         }
 
         if (payload2 !== this.mledDataLast.z2) {
-          await this.mledSerialManager.sendFrame(this.mledDataLine2, this.mledBrightness, ''); // Clear
+          await this.sendMledFrame(this.mledDataLine2, this.mledBrightness, ''); // Clear
           if (payload2) {
-            await this.mledSerialManager.sendFrame(this.mledDataLine2, this.mledBrightness, payload2);
+            await this.sendMledFrame(this.mledDataLine2, this.mledBrightness, payload2);
           }
           this.mledDataLast.z2 = payload2;
         }
@@ -3766,7 +3964,7 @@ createApp({
       }
 
       if (payload3 !== this.mledDataLast.z3) {
-        await this.mledSerialManager.sendFrame(this.mledDataLine3, this.mledBrightness, payload3);
+        await this.sendMledFrame(this.mledDataLine3, this.mledBrightness, payload3);
         this.mledDataLast.z3 = payload3;
       }
 
@@ -3776,9 +3974,9 @@ createApp({
         const payload4 = `^cs 7^${country}`;
 
         if (payload4 !== this.mledDataLast.z4) {
-          await this.mledSerialManager.sendFrame(this.mledDataLine4, this.mledBrightness, ''); // Clear
+          await this.sendMledFrame(this.mledDataLine4, this.mledBrightness, ''); // Clear
           if (payload4) {
-            await this.mledSerialManager.sendFrame(this.mledDataLine4, this.mledBrightness, payload4);
+            await this.sendMledFrame(this.mledDataLine4, this.mledBrightness, payload4);
           }
           this.mledDataLast.z4 = payload4;
         }
@@ -3794,7 +3992,7 @@ createApp({
       const payload = `^cp 1 4 7^${dorsal}`;
 
       try {
-        await this.mledSerialManager.sendFrame(this.mledDataLine1, this.mledBrightness, payload);
+        await this.sendMledFrame(this.mledDataLine1, this.mledBrightness, payload);
         this.mledPreviewText = dorsal;
         this.mledActiveLabel = "Data Integrator";
       } catch (error) {
@@ -3822,9 +4020,9 @@ createApp({
       }
 
       try {
-        await this.mledSerialManager.sendFrame(this.mledDataLine2, this.mledBrightness, ''); // Clear first
+        await this.sendMledFrame(this.mledDataLine2, this.mledBrightness, ''); // Clear first
         if (payload) {
-          await this.mledSerialManager.sendFrame(this.mledDataLine2, this.mledBrightness, payload);
+          await this.sendMledFrame(this.mledDataLine2, this.mledBrightness, payload);
         }
         this.mledPreviewText = `${handler} ${dog}`;
         this.mledActiveLabel = "Data Integrator";
@@ -3850,7 +4048,7 @@ createApp({
       }
 
       try {
-        await this.mledSerialManager.sendFrame(this.mledDataLine3, this.mledBrightness, payload);
+        await this.sendMledFrame(this.mledDataLine3, this.mledBrightness, payload);
         this.mledPreviewText = this.mledDataElim ? "DIS" : `F${this.mledDataFaults} R${this.mledDataRefusals}`;
         this.mledActiveLabel = "Data Integrator";
       } catch (error) {
@@ -3872,9 +4070,9 @@ createApp({
       const payload = `^cs 7^${country}`;
 
       try {
-        await this.mledSerialManager.sendFrame(this.mledDataLine4, this.mledBrightness, ''); // Clear first
+        await this.sendMledFrame(this.mledDataLine4, this.mledBrightness, ''); // Clear first
         if (payload) {
-          await this.mledSerialManager.sendFrame(this.mledDataLine4, this.mledBrightness, payload);
+          await this.sendMledFrame(this.mledDataLine4, this.mledBrightness, payload);
         }
         this.mledPreviewText = country;
         this.mledActiveLabel = "Data Integrator";
