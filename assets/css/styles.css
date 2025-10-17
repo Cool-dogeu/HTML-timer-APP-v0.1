@@ -1045,6 +1045,9 @@ textarea.form-control {
     border-bottom: 3px solid transparent;
     margin-bottom: -2px;
     transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .tab-button:hover {
@@ -1055,6 +1058,25 @@ textarea.form-control {
 .tab-button.active {
     color: #2196f3;
     border-bottom-color: #2196f3;
+}
+
+.tab-status-led {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid #555;
+    transition: background-color 0.3s;
+    flex-shrink: 0;
+}
+
+.tab-status-led.status-ok {
+    background-color: #00ff00;
+    box-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+}
+
+.tab-status-led.status-error {
+    background-color: #ff0000;
+    box-shadow: 0 0 8px rgba(255, 0, 0, 0.5);
 }
 
 .tab-content {
@@ -1607,5 +1629,62 @@ textarea.form-control {
     .mled-sticky-controls .btn {
         width: 100%;
         justify-content: center;
+    }
+}
+
+/* HDMI Display Controls */
+.hdmi-style-controls {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.hdmi-control-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.hdmi-control-group .module-label {
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.color-picker {
+    width: 60px;
+    height: 34px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.3s;
+    background: var(--bg-tertiary);
+}
+
+.color-picker:hover {
+    border-color: #2196f3;
+}
+
+.color-picker:focus {
+    outline: none;
+    border-color: #2196f3;
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+@media (max-width: 640px) {
+    .hdmi-style-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+
+    .hdmi-control-group {
+        justify-content: space-between;
+    }
+
+    .color-picker {
+        width: 50px;
+        height: 30px;
     }
 }

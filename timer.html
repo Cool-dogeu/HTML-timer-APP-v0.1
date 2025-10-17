@@ -99,6 +99,7 @@
               :class="{ active: activeTab === 'timer' }"
               @click="activeTab = 'timer'"
             >
+              <span class="tab-status-led" :class="isConnected ? 'status-ok' : 'status-error'"></span>
               <i class="material-icons" style="vertical-align: middle; font-size: 20px;">timer</i>
               Timer
             </button>
@@ -107,8 +108,18 @@
               :class="{ active: activeTab === 'display' }"
               @click="activeTab = 'display'"
             >
+              <span class="tab-status-led" :class="mledConnected ? 'status-ok' : 'status-error'"></span>
               <i class="material-icons" style="vertical-align: middle; font-size: 20px;">tv</i>
               FDS Display
+            </button>
+            <button
+              class="tab-button"
+              :class="{ active: activeTab === 'hdmi' }"
+              @click="activeTab = 'hdmi'"
+            >
+              <span class="tab-status-led" :class="hdmiWindowRef && !hdmiWindowRef.closed ? 'status-ok' : 'status-error'"></span>
+              <i class="material-icons" style="vertical-align: middle; font-size: 20px;">cast</i>
+              HDMI Display
             </button>
           </div>
         </div>
@@ -323,7 +334,7 @@
         <div class="mled-module" :class="{ disabled: !mledTextEnabled }">
           <div class="module-toggle">
             <label>
-              <input type="checkbox" v-model="mledTextEnabled" :disabled="!mledConnected && !hdmiEnabled" />
+              <input type="checkbox" v-model="mledTextEnabled" :disabled="!mledConnected" />
               Enable
             </label>
           </div>
@@ -378,7 +389,7 @@
         <div class="mled-module" :class="{ disabled: !mledCwEnabled }">
           <div class="module-toggle">
             <label>
-              <input type="checkbox" v-model="mledCwEnabled" :disabled="!mledConnected && !hdmiEnabled" />
+              <input type="checkbox" v-model="mledCwEnabled" :disabled="!mledConnected" />
               Enable
             </label>
           </div>
@@ -422,7 +433,7 @@
         <div class="mled-module" :class="{ disabled: !mledTimerEnabled }">
           <div class="module-toggle">
             <label>
-              <input type="checkbox" v-model="mledTimerEnabled" :disabled="!mledConnected && !hdmiEnabled" />
+              <input type="checkbox" v-model="mledTimerEnabled" :disabled="!mledConnected" />
               Enable
             </label>
           </div>
@@ -524,7 +535,7 @@
         <div class="mled-module" :class="{ disabled: !mledLinkEnabled }">
           <div class="module-toggle">
             <label>
-              <input type="checkbox" v-model="mledLinkEnabled" :disabled="!mledConnected && !hdmiEnabled" />
+              <input type="checkbox" v-model="mledLinkEnabled" :disabled="!mledConnected" />
               Enable
             </label>
           </div>
@@ -604,92 +615,297 @@
           </div>
         </div>
 
-        <!-- HDMI Module -->
-        <div class="mled-module" :class="{ disabled: !hdmiEnabled }">
-          <div class="module-toggle">
-            <label>
-              <input type="checkbox" v-model="hdmiEnabled" />
-              Enable
-            </label>
-          </div>
-          <div class="module-header">HDMI</div>
+      </div>
 
-          <div style="padding: 1rem;">
-            <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
-              <button @click="openHdmiWindow" class="btn btn-primary" :disabled="!hdmiEnabled">
+      <!-- HDMI Display Tab Content -->
+      <div class="mled-container tab-content" :class="{ active: activeTab === 'hdmi' }">
+        <!-- Sticky Control Bar for HDMI -->
+        <div class="mled-sticky-controls">
+          <div class="mled-preview">
+            <div class="mled-preview-row">
+              <div class="mled-preview-left" v-html="hdmiPreviewText"></div>
+              <div class="mled-preview-right">Active: {{ hdmiActiveLabel }}</div>
+            </div>
+          </div>
+
+          <div class="mled-sticky-controls-row">
+            <div class="hdmi-style-controls">
+              <div class="hdmi-control-group">
+                <label class="module-label">Background:</label>
+                <input type="color" v-model="hdmiBackgroundColor" class="color-picker" />
+              </div>
+              <div class="hdmi-control-group">
+                <label class="module-label">Font Color:</label>
+                <input type="color" v-model="hdmiFontColor" class="color-picker" />
+              </div>
+              <div class="hdmi-control-group">
+                <label class="module-label">Font Size:</label>
+                <select v-model="hdmiFontSize" class="mled-select">
+                  <option value="small">Small</option>
+                  <option value="medium">Medium</option>
+                  <option value="large">Large</option>
+                  <option value="xlarge">X-Large</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="mled-sticky-right-controls">
+              <button @click="openHdmiOutput" class="btn btn-primary">
                 <i class="material-icons">open_in_new</i>
-                Open output
+                Open Output
               </button>
-              <button @click="fullscreenHdmi" class="btn btn-secondary" :disabled="!hdmiEnabled">
+              <button @click="toggleHdmiFullscreen" class="btn btn-secondary" v-if="hdmiWindowRef">
                 <i class="material-icons">fullscreen</i>
                 Fullscreen
               </button>
-            </div>
-
-            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
-              <label class="module-label">Background</label>
-              <select v-model="hdmiBackgroundColor" class="mled-select" :disabled="!hdmiEnabled" @change="applyHdmiStyles">
-                <option value="#000000">Black</option>
-                <option value="#111111">Dark gray</option>
-                <option value="#ffffff">White</option>
-                <option value="#ef4444">Red</option>
-                <option value="#22c55e">Green</option>
-                <option value="#3b82f6">Blue</option>
-                <option value="#fde047">Yellow</option>
-                <option value="#22d3ee">Cyan</option>
-                <option value="#f472b6">Rose</option>
-              </select>
-
-              <label class="module-label" style="margin-left: 1rem;">Font color</label>
-              <select v-model="hdmiForegroundColor" class="mled-select" :disabled="!hdmiEnabled" @change="applyHdmiStyles">
-                <option value="#ffffff">White</option>
-                <option value="#e5e7eb">Off-white</option>
-                <option value="#000000">Black</option>
-                <option value="#ef4444">Red</option>
-                <option value="#22c55e">Green</option>
-                <option value="#3b82f6">Blue</option>
-                <option value="#fde047">Yellow</option>
-                <option value="#22d3ee">Cyan</option>
-                <option value="#fb923c">Orange</option>
-                <option value="#60a5fa">Sky</option>
-                <option value="#a78bfa">Purple</option>
-              </select>
-
-              <label class="module-label" style="margin-left: 1rem;">Font size</label>
-              <select v-model="hdmiFontSize" class="mled-select" :disabled="!hdmiEnabled" @change="applyHdmiStyles">
-                <option value="64px">64 px</option>
-                <option value="80px">80 px</option>
-                <option value="96px">96 px</option>
-                <option value="120px">120 px</option>
-                <option value="160px">160 px</option>
-                <option value="180px">180 px</option>
-                <option value="200px">200 px</option>
-                <option value="240px">240 px</option>
-                <option value="280px">280 px</option>
-                <option value="320px">320 px</option>
-              </select>
-            </div>
-
-            <div style="margin-bottom: 1rem;">
-              <small style="color: var(--text-secondary); font-size: 0.85rem;">
-                Displays content from line 7 (Coursewalk, Countdown, Timer LINK, MLED Text)
-              </small>
-            </div>
-
-            <div class="module-section-container" :style="{ background: hdmiBackgroundColor }">
-              <div :style="{
-                color: hdmiForegroundColor,
-                fontSize: '32px',
-                fontFamily: 'Helvetica, Arial, sans-serif',
-                whiteSpace: 'nowrap',
-                letterSpacing: '1px',
-                textAlign: 'center',
-                padding: '1rem',
-                overflowX: 'auto'
-              }">{{ hdmiPreviewText }}</div>
+              <button @click="clearHdmi" class="btn btn-secondary">
+                <i class="material-icons">clear_all</i>
+                Clear
+              </button>
             </div>
           </div>
         </div>
+
+        <!-- HDMI Text Module -->
+        <div class="mled-module" :class="{ disabled: !hdmiTextEnabled }">
+          <div class="module-toggle">
+            <label>
+              <input type="checkbox" v-model="hdmiTextEnabled" />
+              Enable
+            </label>
+          </div>
+          <div class="module-header">HDMI TEXT</div>
+
+          <div style="padding: 1rem;">
+            <div style="position: relative; margin-bottom: 1rem;">
+              <textarea
+                v-model="hdmiTextInput"
+                class="mled-textarea"
+                placeholder="max 64 bytes"
+                maxlength="64"
+                @input="updateHdmiCharCounter"
+              ></textarea>
+              <div class="char-counter">{{ hdmiCharsLeft }} left</div>
+            </div>
+
+            <!-- Settings row -->
+            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+              <label class="module-label">Text color</label>
+              <select v-model="hdmiTextColor" class="mled-select">
+                <option value="Default">Default</option>
+                <option value="Red">Red</option>
+                <option value="Green">Green</option>
+                <option value="Blue">Blue</option>
+                <option value="Yellow">Yellow</option>
+                <option value="Magenta">Magenta</option>
+                <option value="Cyan">Cyan</option>
+                <option value="White">White</option>
+                <option value="Orange">Orange</option>
+                <option value="Deep pink">Deep pink</option>
+                <option value="Light Blue">Light Blue</option>
+              </select>
+            </div>
+
+            <!-- Buttons row -->
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+              <button @click="sendHdmiText" class="btn btn-primary">Send text</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- HDMI Coursewalks Module -->
+        <div class="mled-module" :class="{ disabled: !hdmiCwEnabled }">
+          <div class="module-toggle">
+            <label>
+              <input type="checkbox" v-model="hdmiCwEnabled" />
+              Enable
+            </label>
+          </div>
+          <div class="module-header">Coursewalks</div>
+
+          <div style="padding: 1rem;">
+            <!-- Settings row -->
+            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+              <label class="module-label">Version</label>
+              <select v-model="hdmiCwVersion" class="mled-select" :disabled="!hdmiCwEnabled">
+                <option value="1">CW1</option>
+                <option value="2">CW2</option>
+                <option value="3">CW3</option>
+                <option value="4">CW4</option>
+              </select>
+
+              <label class="module-label" style="margin-left: 1rem;">Duration</label>
+              <select v-model="hdmiCwDuration" class="mled-select" :disabled="!hdmiCwEnabled">
+                <option value="7">7 min</option>
+                <option value="8">8 min</option>
+                <option value="9">9 min</option>
+                <option value="10">10 min</option>
+              </select>
+
+              <label class="module-label" style="margin-left: 1rem;">Wait</label>
+              <select v-model="hdmiCwWait" class="mled-select" :disabled="!hdmiCwEnabled">
+                <option value="10">10 s</option>
+                <option value="20">20 s</option>
+                <option value="30">30 s</option>
+              </select>
+            </div>
+
+            <!-- Buttons row -->
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+              <button @click="startHdmiCoursewalk" class="btn btn-primary" :disabled="!hdmiCwEnabled">Start</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- HDMI Countdown Timer Module -->
+        <div class="mled-module" :class="{ disabled: !hdmiTimerEnabled }">
+          <div class="module-toggle">
+            <label>
+              <input type="checkbox" v-model="hdmiTimerEnabled" />
+              Enable
+            </label>
+          </div>
+          <div class="module-header">Countdown</div>
+
+          <div style="padding: 1rem;">
+            <!-- Count Up Section -->
+            <div style="margin-bottom: 1.5rem;">
+              <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                <label class="module-label">Count up</label>
+                <label class="module-label" style="margin-left: 1rem;">Color</label>
+                <select v-model="hdmiUpColor" class="mled-select" :disabled="!hdmiTimerEnabled">
+                  <option value="Red">Red</option>
+                  <option value="Green">Green</option>
+                  <option value="Blue">Blue</option>
+                  <option value="Yellow">Yellow</option>
+                  <option value="Magenta">Magenta</option>
+                  <option value="Cyan">Cyan</option>
+                  <option value="White">White</option>
+                  <option value="Orange">Orange</option>
+                  <option value="Deep pink">Deep pink</option>
+                  <option value="Light Blue">Light Blue</option>
+                </select>
+              </div>
+              <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <button @click="startHdmiCountUp" class="btn btn-primary" :disabled="!hdmiTimerEnabled">Start</button>
+                <button @click="stopHdmiCountUp" class="btn btn-danger" :disabled="!hdmiTimerEnabled">Stop</button>
+              </div>
+            </div>
+
+            <!-- Count Down Section -->
+            <div class="module-section-container">
+              <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                <label class="module-label">Count down</label>
+                <label class="module-section-label">hh</label>
+                <input
+                  v-model.number="hdmiDownHH"
+                  type="number"
+                  min="0"
+                  max="1"
+                  style="width: 60px;"
+                  class="mled-select"
+                  :disabled="!hdmiTimerEnabled"
+                />
+                <label class="module-label">mm</label>
+                <input
+                  v-model.number="hdmiDownMM"
+                  type="number"
+                  min="0"
+                  max="99"
+                  style="width: 70px;"
+                  class="mled-select"
+                  :disabled="!hdmiTimerEnabled"
+                />
+                <label class="module-label">ss</label>
+                <input
+                  v-model.number="hdmiDownSS"
+                  type="number"
+                  min="0"
+                  max="59"
+                  style="width: 70px;"
+                  class="mled-select"
+                  :disabled="!hdmiTimerEnabled"
+                />
+                <label class="module-label" style="margin-left: 1rem;">Color</label>
+                <select v-model="hdmiDownColor" class="mled-select" :disabled="!hdmiTimerEnabled">
+                  <option value="Red">Red</option>
+                  <option value="Green">Green</option>
+                  <option value="Blue">Blue</option>
+                  <option value="Yellow">Yellow</option>
+                  <option value="Magenta">Magenta</option>
+                  <option value="Cyan">Cyan</option>
+                  <option value="White">White</option>
+                  <option value="Orange">Orange</option>
+                  <option value="Deep pink">Deep pink</option>
+                  <option value="Light Blue">Light Blue</option>
+                </select>
+                <label class="module-label" style="margin-left: 1rem;">Hold</label>
+                <select v-model.number="hdmiDownHold" class="mled-select" :disabled="!hdmiTimerEnabled">
+                  <option :value="1">1 s</option>
+                  <option :value="3">3 s</option>
+                  <option :value="5">5 s</option>
+                  <option :value="10">10 s</option>
+                  <option :value="15">15 s</option>
+                  <option :value="20">20 s</option>
+                  <option :value="30">30 s</option>
+                  <option :value="60">60 s</option>
+                </select>
+              </div>
+              <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <button @click="startHdmiCountDown" class="btn btn-primary" :disabled="!hdmiTimerEnabled">Start</button>
+                <button @click="stopHdmiCountDown" class="btn btn-danger" :disabled="!hdmiTimerEnabled">Stop</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- HDMI Timer LINK Module -->
+        <div class="mled-module" :class="{ disabled: !hdmiLinkEnabled }">
+          <div class="module-toggle">
+            <label>
+              <input type="checkbox" v-model="hdmiLinkEnabled" />
+              Enable
+            </label>
+          </div>
+          <div class="module-header">Timer LINK</div>
+
+          <div style="padding: 1rem;">
+            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+              <label class="module-label">Color</label>
+              <select v-model="hdmiLinkColor" class="mled-select" :disabled="!hdmiLinkEnabled">
+                <option value="Red">Red</option>
+                <option value="Green">Green</option>
+                <option value="Blue">Blue</option>
+                <option value="Yellow">Yellow</option>
+                <option value="Magenta">Magenta</option>
+                <option value="Cyan">Cyan</option>
+                <option value="White">White</option>
+                <option value="Orange">Orange</option>
+                <option value="Deep pink">Deep pink</option>
+                <option value="Light Blue">Light Blue</option>
+              </select>
+              <label class="module-label" style="margin-left: 1rem;">Hold</label>
+              <select v-model.number="hdmiLinkHold" class="mled-select" :disabled="!hdmiLinkEnabled">
+                <option :value="1">1 s</option>
+                <option :value="3">3 s</option>
+                <option :value="5">5 s</option>
+                <option :value="10">10 s</option>
+                <option :value="15">15 s</option>
+                <option :value="20">20 s</option>
+                <option :value="30">30 s</option>
+                <option :value="60">60 s</option>
+              </select>
+            </div>
+
+            <div class="module-section-container">
+              <label class="module-section-label">Status:</label>
+              <div class="module-section-text">
+                {{ hdmiLinkStatus }}
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
       </div><!-- Close app-content-wrapper -->
 

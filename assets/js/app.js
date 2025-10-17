@@ -74,8 +74,8 @@ class ProtocolAlge {
         return null;
     }
 
-    // Parse time (absolute format: HH:MM:SS.FFFF or HH:MM:SS:FFFF, delta format: seconds.FFFF)
-    const absoluteTimeRegex1 = /^\d{2}:\d{2}:\d{2}\.\d{4}$/; // 12:01:24.2050
+    // Parse time (absolute format: HH:MM:SS.FFFF or HH:MM:SS.FF or HH:MM:SS:FFFF, delta format: seconds.FFFF)
+    const absoluteTimeRegex1 = /^\d{2}:\d{2}:\d{2}\.\d{2,4}$/; // 12:01:24.2050 or 12:01:24.85
     const absoluteTimeRegex2 = /^\d{2}:\d{2}:\d{2}:\d{4}$/; // 12:01:32:1250
     const deltaTimeRegex = /^\d{1,9}(\.\d{1,4})?$/;
 
@@ -88,7 +88,9 @@ class ProtocolAlge {
       const [time, ms] = timeString.split(".");
       const [hours, minutes, seconds] = time.split(":").map(Number);
       absoluteTime = new Date();
-      absoluteTime.setHours(hours, minutes, seconds, parseInt(ms) / 10);
+      // Pad ms to 4 digits if needed (e.g., "85" -> "8500", "8500" stays "8500")
+      const msPadded = ms.padEnd(4, '0');
+      absoluteTime.setHours(hours, minutes, seconds, parseInt(msPadded) / 10);
     } else if (absoluteTimeRegex2.test(timeString)) {
       mode = ProtocolAlge.TimeMode.ABSOLUTE;
       const parts = timeString.split(":");
@@ -796,10 +798,45 @@ createApp({
       // HDMI output
       hdmiEnabled: false,
       hdmiWindow: null,
+      hdmiWindowRef: null, // Reference to HDMI output window
       hdmiBackgroundColor: '#000000',
       hdmiForegroundColor: '#ffffff',
-      hdmiFontSize: '320px',
+      hdmiFontColor: '#ffffff', // Font color for HDMI display
+      hdmiFontSize: 'large', // Font size: small, medium, large, xlarge
       hdmiPreviewText: 'HDMI preview',
+      hdmiActiveLabel: 'Idle',
+      // HDMI Text module
+      hdmiTextEnabled: false,
+      hdmiTextInput: '',
+      hdmiTextColor: 'Default',
+      hdmiCharsLeft: 64,
+      // HDMI Coursewalks module
+      hdmiCwEnabled: false,
+      hdmiCwVersion: '1',
+      hdmiCwDuration: '9',
+      hdmiCwWait: '20',
+      hdmiCwCancel: false,
+      hdmiCwTimers: [],
+      // HDMI Countdown Timer module
+      hdmiTimerEnabled: false,
+      hdmiUpColor: 'Red',
+      hdmiUpTimer: null,
+      hdmiUpStartTs: 0,
+      hdmiUpClearTimer: null, // Auto-clear timer after count up stops
+      hdmiDownColor: 'Red',
+      hdmiDownHH: 0,
+      hdmiDownMM: 10,
+      hdmiDownSS: 0,
+      hdmiDownTimer: null,
+      hdmiDownEndTs: 0,
+      hdmiDownHold: 10, // Hold time in seconds after countdown reaches 0
+      hdmiDownClearTimer: null, // Auto-clear timer after countdown reaches 0
+      // HDMI Timer LINK module
+      hdmiLinkEnabled: false,
+      hdmiLinkColor: 'Green',
+      hdmiLinkHold: 10, // Hold time in seconds after timer stops
+      hdmiLinkStatus: 'Waiting for timer data...',
+      hdmiLinkClearTimer: null, // Auto-clear timer after timer stops
       // Initialization flag to prevent confirmations during load
       isInitializing: true,
     };
@@ -1013,7 +1050,105 @@ createApp({
     mledDownHold() { this.saveMledSettings(); },
     mledLinkColor() { this.saveMledSettings(); },
     mledLinkHold() { this.saveMledSettings(); },
-    mledDataUrl() { this.saveMledSettings(); }
+    mledDataUrl() { this.saveMledSettings(); },
+
+    // HDMI module watch handlers
+    hdmiTextEnabled(newVal, oldVal) {
+      if (this.isInitializing) return;
+
+      if (newVal === true && oldVal === false) {
+        // Enabling - disable other modules and stop any active timers
+        this.stopHdmiCountUp();
+        this.stopHdmiCountDown();
+        this.hdmiCwEnabled = false;
+        this.hdmiTimerEnabled = false;
+        this.hdmiLinkEnabled = false;
+      }
+
+      if (oldVal === true && newVal === false && this.hdmiWindowRef) {
+        console.log('HDMI Text module disabled');
+      }
+    },
+    hdmiCwEnabled(newVal, oldVal) {
+      if (this.isInitializing) return;
+
+      if (newVal === true && oldVal === false) {
+        // Enabling - disable other modules and stop any active timers
+        this.stopHdmiCountUp();
+        this.stopHdmiCountDown();
+        this.hdmiTextEnabled = false;
+        this.hdmiTimerEnabled = false;
+        this.hdmiLinkEnabled = false;
+      }
+
+      if (oldVal === true && newVal === false && this.hdmiWindowRef) {
+        console.log('HDMI Coursewalks module disabled');
+        // Clear any running coursewalk timers
+        this.hdmiCwTimers.forEach(timer => clearTimeout(timer));
+        this.hdmiCwTimers = [];
+      }
+    },
+    hdmiTimerEnabled(newVal, oldVal) {
+      if (this.isInitializing) return;
+
+      if (newVal === true && oldVal === false) {
+        // Enabling - disable other modules
+        this.hdmiTextEnabled = false;
+        this.hdmiCwEnabled = false;
+        this.hdmiLinkEnabled = false;
+      }
+
+      if (oldVal === true && newVal === false && this.hdmiWindowRef) {
+        console.log('HDMI Timer module disabled');
+        this.stopHdmiCountUp();
+        this.stopHdmiCountDown();
+      }
+    },
+    hdmiLinkEnabled(newVal, oldVal) {
+      if (this.isInitializing) return;
+
+      if (newVal === true && oldVal === false) {
+        // Enabling - disable other modules and stop any active timers
+        this.stopHdmiCountUp();
+        this.stopHdmiCountDown();
+        this.hdmiTextEnabled = false;
+        this.hdmiCwEnabled = false;
+        this.hdmiTimerEnabled = false;
+      }
+
+      if (oldVal === true && newVal === false && this.hdmiWindowRef) {
+        console.log('HDMI Timer LINK module disabled');
+        this.hdmiLinkStatus = "Waiting for timer data...";
+      }
+    },
+    // HDMI settings watchers
+    hdmiBackgroundColor() {
+      // Update HDMI output window styling
+      if (this.hdmiWindowRef && !this.hdmiWindowRef.closed) {
+        const body = this.hdmiWindowRef.document.body;
+        if (body) {
+          body.style.backgroundColor = this.hdmiBackgroundColor;
+        }
+      }
+    },
+    hdmiFontColor() {
+      // Update HDMI output window styling
+      if (this.hdmiWindowRef && !this.hdmiWindowRef.closed) {
+        const outputDiv = this.hdmiWindowRef.document.getElementById('output');
+        if (outputDiv) {
+          outputDiv.style.color = this.hdmiFontColor;
+        }
+      }
+    },
+    hdmiFontSize() {
+      // Update HDMI output window styling
+      if (this.hdmiWindowRef && !this.hdmiWindowRef.closed) {
+        const outputDiv = this.hdmiWindowRef.document.getElementById('output');
+        if (outputDiv) {
+          outputDiv.className = `size-${this.hdmiFontSize}`;
+        }
+      }
+    }
   },
   mounted() {
     // Check if Web Serial API is available
@@ -4132,59 +4267,84 @@ createApp({
 
     // Timer LINK Methods
     async routeTimerToMled(timeStr, state) {
-      if (!this.mledLinkEnabled || !this.mledLinkToMled) {
-        return;
+      // Route to MLED if enabled
+      if (this.mledLinkEnabled && this.mledLinkToMled) {
+        // Check if at least one display is available
+        if (!this.mledConnected && !this.hdmiEnabled) {
+          return;
+        }
+
+        // MLED serial manager check is now optional - we can work with HDMI only
+        const hasMledSerial = this.mledSerialManager && this.mledSerialManager.isConnected();
+
+        try {
+          const colorCode = this.getMledColorCode(this.mledLinkColor);
+          const payload = `^cs ${colorCode}^${timeStr}^cs 0^`;
+
+          // Send to configured MLED line (not the global mledLine)
+          await this.sendMledFrame(
+            this.mledLinkLine,
+            this.mledBrightness,
+            payload
+          );
+
+          // Update preview and status
+          this.mledPreviewText = timeStr;
+          this.mledActiveLabel = "Timer LINK";
+
+          if (state === "running") {
+            // Clear any pending auto-clear timer when running
+            if (this.mledLinkClearTimer) {
+              clearTimeout(this.mledLinkClearTimer);
+              this.mledLinkClearTimer = null;
+            }
+            this.mledLinkStatus = `Routing: ${timeStr} (Running)`;
+          } else if (state === "finished") {
+            this.mledLinkStatus = `Routed: ${timeStr} (Finished)`;
+            // Auto-clear after configured hold time
+            if (this.mledLinkClearTimer) {
+              clearTimeout(this.mledLinkClearTimer);
+            }
+            this.mledLinkClearTimer = setTimeout(() => {
+              this.clearMled();
+              this.mledLinkStatus = "Waiting for timer data...";
+            }, this.mledLinkHold * 1000);
+          }
+        } catch (error) {
+          console.error("Timer LINK routing error:", error);
+          this.mledLinkStatus = `Error: ${error.message}`;
+
+          // If device is lost, update connection state
+          if (error.message.includes("device has been lost") || error.message.includes("lost")) {
+            console.warn("MLED device lost - marking as disconnected");
+            this.mledConnected = false;
+          }
+        }
       }
 
-      // Check if at least one display is available
-      if (!this.mledConnected && !this.hdmiEnabled) {
-        return;
-      }
-
-      // MLED serial manager check is now optional - we can work with HDMI only
-      const hasMledSerial = this.mledSerialManager && this.mledSerialManager.isConnected();
-
-      try {
-        const colorCode = this.getMledColorCode(this.mledLinkColor);
-        const payload = `^cs ${colorCode}^${timeStr}^cs 0^`;
-
-        // Send to configured MLED line (not the global mledLine)
-        await this.sendMledFrame(
-          this.mledLinkLine,
-          this.mledBrightness,
-          payload
-        );
-
-        // Update preview and status
-        this.mledPreviewText = timeStr;
-        this.mledActiveLabel = "Timer LINK";
+      // Route to HDMI if enabled
+      if (this.hdmiLinkEnabled && this.hdmiWindowRef && !this.hdmiWindowRef.closed) {
+        this.updateHdmiOutput(timeStr);
+        this.hdmiPreviewText = timeStr;
+        this.hdmiActiveLabel = "Timer LINK";
 
         if (state === "running") {
           // Clear any pending auto-clear timer when running
-          if (this.mledLinkClearTimer) {
-            clearTimeout(this.mledLinkClearTimer);
-            this.mledLinkClearTimer = null;
+          if (this.hdmiLinkClearTimer) {
+            clearTimeout(this.hdmiLinkClearTimer);
+            this.hdmiLinkClearTimer = null;
           }
-          this.mledLinkStatus = `Routing: ${timeStr} (Running)`;
+          this.hdmiLinkStatus = `Routing: ${timeStr} (Running)`;
         } else if (state === "finished") {
-          this.mledLinkStatus = `Routed: ${timeStr} (Finished)`;
+          this.hdmiLinkStatus = `Routed: ${timeStr} (Finished)`;
           // Auto-clear after configured hold time
-          if (this.mledLinkClearTimer) {
-            clearTimeout(this.mledLinkClearTimer);
+          if (this.hdmiLinkClearTimer) {
+            clearTimeout(this.hdmiLinkClearTimer);
           }
-          this.mledLinkClearTimer = setTimeout(() => {
-            this.clearMled();
-            this.mledLinkStatus = "Waiting for timer data...";
-          }, this.mledLinkHold * 1000);
-        }
-      } catch (error) {
-        console.error("Timer LINK routing error:", error);
-        this.mledLinkStatus = `Error: ${error.message}`;
-
-        // If device is lost, update connection state
-        if (error.message.includes("device has been lost") || error.message.includes("lost")) {
-          console.warn("MLED device lost - marking as disconnected");
-          this.mledConnected = false;
+          this.hdmiLinkClearTimer = setTimeout(() => {
+            this.clearHdmi();
+            this.hdmiLinkStatus = "Waiting for timer data...";
+          }, this.hdmiLinkHold * 1000);
         }
       }
     },
@@ -4533,6 +4693,440 @@ createApp({
         this.mledActiveLabel = "Data Integrator";
       } catch (error) {
         console.error('Send data line 4 error:', error);
+      }
+    },
+
+    // ========== HDMI Display Methods ==========
+
+    updateHdmiCharCounter() {
+      const text = this.hdmiTextInput || '';
+      this.hdmiCharsLeft = 64 - text.length;
+    },
+
+    openHdmiOutput() {
+      // Open a new window for HDMI output
+      const width = 1920;
+      const height = 1080;
+      const left = window.screen.width - width;
+      const top = 0;
+
+      this.hdmiWindowRef = window.open(
+        '',
+        'HDMI_Output',
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no`
+      );
+
+      if (this.hdmiWindowRef) {
+        // Create HTML for HDMI output window
+        this.hdmiWindowRef.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="UTF-8">
+              <title>HDMI Output</title>
+              <style>
+                * {
+                  margin: 0;
+                  padding: 0;
+                  box-sizing: border-box;
+                }
+                body {
+                  width: 100vw;
+                  height: 100vh;
+                  display: flex;
+                  justify-content: center;
+                  align-items: center;
+                  background-color: ${this.hdmiBackgroundColor};
+                  color: ${this.hdmiFontColor};
+                  font-family: 'Roboto', Arial, sans-serif;
+                  overflow: hidden;
+                }
+                #output {
+                  text-align: center;
+                  font-weight: bold;
+                  padding: 2rem;
+                  word-wrap: break-word;
+                  max-width: 90%;
+                }
+                .size-small { font-size: 80px; }
+                .size-medium { font-size: 160px; }
+                .size-large { font-size: 240px; }
+                .size-xlarge { font-size: 320px; }
+              </style>
+            </head>
+            <body>
+              <div id="output" class="size-${this.hdmiFontSize}">Ready</div>
+            </body>
+          </html>
+        `);
+        this.hdmiWindowRef.document.close();
+        this.hdmiEnabled = true;
+        console.log('HDMI output window opened');
+
+        // Monitor window close
+        const checkInterval = setInterval(() => {
+          if (this.hdmiWindowRef && this.hdmiWindowRef.closed) {
+            console.log('HDMI output window was closed');
+            this.hdmiWindowRef = null;
+            this.hdmiEnabled = false;
+            this.clearHdmi();
+            clearInterval(checkInterval);
+          }
+        }, 1000);
+      } else {
+        alert('Failed to open HDMI output window. Please check your browser popup blocker settings.');
+      }
+    },
+
+    toggleHdmiFullscreen() {
+      if (this.hdmiWindowRef && !this.hdmiWindowRef.closed) {
+        const doc = this.hdmiWindowRef.document;
+        if (!doc.fullscreenElement) {
+          doc.documentElement.requestFullscreen().catch(err => {
+            console.error('Error attempting to enable fullscreen:', err);
+          });
+        } else {
+          doc.exitFullscreen();
+        }
+      }
+    },
+
+    clearHdmi() {
+      // Stop all running timers
+      if (this.hdmiUpTimer) {
+        clearTimeout(this.hdmiUpTimer);
+        this.hdmiUpTimer = null;
+      }
+      if (this.hdmiDownTimer) {
+        clearTimeout(this.hdmiDownTimer);
+        this.hdmiDownTimer = null;
+      }
+
+      // Stop coursewalks
+      this.stopHdmiCoursewalks();
+
+      // Clear all pending auto-clear timers
+      if (this.hdmiUpClearTimer) {
+        clearTimeout(this.hdmiUpClearTimer);
+        this.hdmiUpClearTimer = null;
+      }
+      if (this.hdmiDownClearTimer) {
+        clearTimeout(this.hdmiDownClearTimer);
+        this.hdmiDownClearTimer = null;
+      }
+      if (this.hdmiLinkClearTimer) {
+        clearTimeout(this.hdmiLinkClearTimer);
+        this.hdmiLinkClearTimer = null;
+      }
+
+      // Clear the display
+      if (this.hdmiWindowRef && !this.hdmiWindowRef.closed) {
+        const outputDiv = this.hdmiWindowRef.document.getElementById('output');
+        if (outputDiv) {
+          outputDiv.textContent = '';
+        }
+      }
+
+      // Reset status
+      this.hdmiPreviewText = '';
+      this.hdmiActiveLabel = 'Idle';
+      this.hdmiLinkStatus = 'Waiting for timer data...';
+    },
+
+    updateHdmiOutput(text) {
+      if (this.hdmiWindowRef && !this.hdmiWindowRef.closed) {
+        const outputDiv = this.hdmiWindowRef.document.getElementById('output');
+        if (outputDiv) {
+          outputDiv.textContent = text;
+
+          // Update styling
+          outputDiv.parentElement.style.backgroundColor = this.hdmiBackgroundColor;
+          outputDiv.style.color = this.hdmiFontColor;
+          outputDiv.className = `size-${this.hdmiFontSize}`;
+        }
+        this.hdmiPreviewText = text;
+      }
+    },
+
+    sendHdmiText() {
+      if (!this.hdmiTextEnabled) {
+        alert('Please enable HDMI Text module first');
+        return;
+      }
+
+      if (!this.hdmiWindowRef || this.hdmiWindowRef.closed) {
+        alert('Please open HDMI output window first');
+        return;
+      }
+
+      const text = this.hdmiTextInput.trim();
+      if (!text) {
+        alert('Please enter some text');
+        return;
+      }
+
+      // Stop any active modules
+      this.stopHdmiCountUp();
+      this.stopHdmiCountDown();
+      this.stopHdmiCoursewalks();
+
+      // Disable other modules
+      this.hdmiCwEnabled = false;
+      this.hdmiTimerEnabled = false;
+      this.hdmiLinkEnabled = false;
+
+      // Simple text display - no scrolling for now, matches static text behavior
+      this.updateHdmiOutput(text);
+      this.hdmiPreviewText = text;
+      this.hdmiActiveLabel = 'HDMI TEXT';
+    },
+
+    stopHdmiCoursewalks() {
+      this.hdmiCwCancel = true;
+      this.hdmiCwTimers.forEach((id) => clearTimeout(id));
+      this.hdmiCwTimers = [];
+    },
+
+    async startHdmiCoursewalk() {
+      if (!this.hdmiCwEnabled) {
+        alert('Please enable HDMI Coursewalks module first');
+        return;
+      }
+
+      if (!this.hdmiWindowRef || this.hdmiWindowRef.closed) {
+        alert('Please open HDMI output window first');
+        return;
+      }
+
+      // Stop any active modules
+      this.stopHdmiCountUp();
+      this.stopHdmiCountDown();
+      this.stopHdmiCoursewalks();
+
+      // Disable other modules
+      this.hdmiTextEnabled = false;
+      this.hdmiTimerEnabled = false;
+      this.hdmiLinkEnabled = false;
+
+      const version = parseInt(this.hdmiCwVersion);
+      const duration = parseInt(this.hdmiCwDuration);
+
+      // Run the coursewalk sequence
+      await this.runHdmiCoursewalk(version, duration);
+    },
+
+    async runHdmiCoursewalk(n, minutes) {
+      if (!this.hdmiWindowRef || this.hdmiWindowRef.closed) {
+        return;
+      }
+
+      this.stopHdmiCoursewalks();
+      this.stopHdmiCountUp();
+      this.stopHdmiCountDown();
+
+      this.hdmiCwCancel = false;
+      this.hdmiCwTimers = [];
+
+      for (let i = 1; i <= n; i++) {
+        if (this.hdmiCwCancel) break;
+        const label = `${i}/${n}`;
+        await this.runHdmiCoursewalkOne(label, minutes);
+      }
+
+      this.hdmiActiveLabel = 'Idle';
+      this.hdmiPreviewText = '';
+    },
+
+    async runHdmiCoursewalkOne(label, minutes) {
+      if (this.hdmiCwCancel) return;
+
+      // Show "soon" message (format: "1/4 soon")
+      this.updateHdmiOutput(`${label} soon`);
+      this.hdmiPreviewText = `${label} soon`;
+      this.hdmiActiveLabel = 'Coursewalks';
+
+      // Wait before starting countdown
+      await this.hdmiCwSleep(parseInt(this.hdmiCwWait) * 1000);
+      if (this.hdmiCwCancel) return;
+
+      // Countdown in M:SS format (matches FDS Display exactly)
+      let seconds = Math.max(0, Math.floor(minutes * 60));
+      for (let t = seconds; t >= 1; t--) {
+        if (this.hdmiCwCancel) return;
+        const m = Math.floor(t / 60);
+        const s = t % 60;
+        const disp = `${m}:${String(s).padStart(2, '0')}`;
+        this.updateHdmiOutput(`${label} ${disp}`);
+        this.hdmiPreviewText = `${label} ${disp}`;
+        await this.hdmiCwSleep(1000);
+      }
+
+      if (this.hdmiCwCancel) return;
+
+      // Show "END" message
+      this.updateHdmiOutput(`${label} END`);
+      this.hdmiPreviewText = `${label} END`;
+
+      // Wait after ending
+      await this.hdmiCwSleep(parseInt(this.hdmiCwWait) * 1000);
+      if (this.hdmiCwCancel) return;
+    },
+
+    async hdmiCwSleep(ms) {
+      return new Promise(resolve => {
+        const timer = setTimeout(resolve, ms);
+        this.hdmiCwTimers.push(timer);
+      });
+    },
+
+    startHdmiCountUp() {
+      if (!this.hdmiTimerEnabled) {
+        alert('Please enable HDMI Countdown module first');
+        return;
+      }
+
+      if (!this.hdmiWindowRef || this.hdmiWindowRef.closed) {
+        alert('Please open HDMI output window first');
+        return;
+      }
+
+      // Stop any active timers
+      this.stopHdmiCountUp();
+      this.stopHdmiCountDown();
+      this.stopHdmiCoursewalks();
+
+      // Disable other modules
+      this.hdmiTextEnabled = false;
+      this.hdmiCwEnabled = false;
+      this.hdmiLinkEnabled = false;
+
+      this.hdmiActiveLabel = 'Timer Up';
+      this.hdmiUpStartTs = performance.now();
+      this.tickHdmiUp();
+    },
+
+    tickHdmiUp() {
+      if (!this.hdmiUpTimer && !this.hdmiWindowRef) return;
+
+      const now = performance.now();
+      const elapsed = Math.max(0, (now - this.hdmiUpStartTs) / 1000);
+      const mm = Math.floor(elapsed / 60);
+      const ss = Math.floor(elapsed % 60);
+      const cc = Math.floor((elapsed - Math.floor(elapsed)) * 100);
+
+      // Format exactly like FDS Display: "SS.CC" or "MM:SS.CC"
+      const text = mm === 0
+        ? `${String(ss).padStart(2, '0')}.${String(cc).padStart(2, '0')}`
+        : `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}.${String(cc).padStart(2, '0')}`;
+
+      this.updateHdmiOutput(text);
+      this.hdmiPreviewText = text;
+
+      this.hdmiUpTimer = setTimeout(() => this.tickHdmiUp(), 100);
+    },
+
+    stopHdmiCountUp() {
+      if (this.hdmiUpTimer) {
+        clearTimeout(this.hdmiUpTimer);
+        this.hdmiUpTimer = null;
+
+        // Cancel any existing auto-clear timer
+        if (this.hdmiUpClearTimer) {
+          clearTimeout(this.hdmiUpClearTimer);
+          this.hdmiUpClearTimer = null;
+        }
+
+        // Auto-clear after 30 seconds
+        this.hdmiUpClearTimer = setTimeout(() => {
+          if (!this.hdmiUpTimer) { // Only if still stopped
+            if (this.hdmiWindowRef && !this.hdmiWindowRef.closed) {
+              const outputDiv = this.hdmiWindowRef.document.getElementById('output');
+              if (outputDiv) {
+                outputDiv.textContent = '';
+              }
+            }
+            this.hdmiPreviewText = '';
+            this.hdmiActiveLabel = 'Idle';
+          }
+          this.hdmiUpClearTimer = null;
+        }, 30000);
+      }
+    },
+
+    startHdmiCountDown() {
+      if (!this.hdmiTimerEnabled) {
+        alert('Please enable HDMI Countdown module first');
+        return;
+      }
+
+      if (!this.hdmiWindowRef || this.hdmiWindowRef.closed) {
+        alert('Please open HDMI output window first');
+        return;
+      }
+
+      // Validate inputs
+      const hh = parseInt(this.hdmiDownHH) || 0;
+      const mm = parseInt(this.hdmiDownMM) || 0;
+      const ss = parseInt(this.hdmiDownSS) || 0;
+
+      if (hh === 0 && mm === 0 && ss === 0) {
+        alert('Please set a countdown time greater than 0');
+        return;
+      }
+
+      // Stop any active timers
+      this.stopHdmiCountUp();
+      this.stopHdmiCountDown();
+      this.stopHdmiCoursewalks();
+
+      // Disable other modules
+      this.hdmiTextEnabled = false;
+      this.hdmiCwEnabled = false;
+      this.hdmiLinkEnabled = false;
+
+      this.hdmiActiveLabel = 'Timer Down';
+      const totalMs = (hh * 3600 + mm * 60 + ss) * 1000;
+      this.hdmiDownEndTs = performance.now() + totalMs;
+
+      this.tickHdmiDown();
+    },
+
+    tickHdmiDown() {
+      if (!this.hdmiDownTimer && !this.hdmiWindowRef) return;
+
+      const now = performance.now();
+      const remainSec = Math.max(0, Math.floor((this.hdmiDownEndTs - now) / 1000));
+      const h = Math.floor(remainSec / 3600);
+      const m = Math.floor((remainSec % 3600) / 60);
+      const s = remainSec % 60;
+
+      // Format exactly like FDS Display: "M:SS" or "H:MM:SS"
+      const fmt = h > 0
+        ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+        : `${m}:${String(s).padStart(2, '0')}`;
+
+      this.updateHdmiOutput(fmt);
+      this.hdmiPreviewText = fmt;
+
+      if (remainSec <= 0) {
+        this.stopHdmiCountDown();
+        // Timer completed - auto-clear after configured hold time
+        this.hdmiDownClearTimer = setTimeout(() => {
+          this.clearHdmi();
+        }, this.hdmiDownHold * 1000);
+      } else {
+        this.hdmiDownTimer = setTimeout(() => this.tickHdmiDown(), 250);
+      }
+    },
+
+    stopHdmiCountDown() {
+      if (this.hdmiDownTimer) {
+        clearTimeout(this.hdmiDownTimer);
+        this.hdmiDownTimer = null;
+      }
+      if (this.hdmiDownClearTimer) {
+        clearTimeout(this.hdmiDownClearTimer);
+        this.hdmiDownClearTimer = null;
       }
     },
   },
