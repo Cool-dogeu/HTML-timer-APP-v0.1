@@ -114,6 +114,24 @@ class ProtocolAlge {
     console.log("ABSO", absoluteTime);
     console.log("DELT", deltaTime);
 
+    // Special handling: Convert channel 1 ABSOLUTE time (HH:MM:SS.FF with 2 decimals) to DELTA time
+    // This allows "c1M 00:00:05.77" to work as a finish signal with 5.77 seconds elapsed
+    if (channelNumber === 1 && mode === ProtocolAlge.TimeMode.ABSOLUTE) {
+      // Check if it's in HH:MM:SS.FF format (2 decimals) by checking the original timeString
+      const twoDecimalFormat = /^\d{2}:\d{2}:\d{2}\.\d{2}$/;
+      if (twoDecimalFormat.test(timeString)) {
+        // Convert HH:MM:SS.FF to delta seconds
+        const [time, ms] = timeString.split(".");
+        const [hours, minutes, seconds] = time.split(":").map(Number);
+        deltaTime = hours * 3600 + minutes * 60 + seconds + parseInt(ms) / 100;
+        mode = ProtocolAlge.TimeMode.DELTA;
+        absoluteTime = null;
+        console.debug(
+          `ParsePacket: Channel 1 with HH:MM:SS.FF format converted to DELTA time: ${deltaTime}s`
+        );
+      }
+    }
+
     return {
       type: "timing",
       userId,
