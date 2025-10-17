@@ -161,6 +161,30 @@
             </label>
           </div>
 
+          <div class="connection-type-selector">
+            <label class="connection-type-label">Connection Type:</label>
+            <div class="connection-type-options">
+              <label class="radio-label">
+                <input
+                  type="radio"
+                  value="serial"
+                  v-model="connectionType"
+                  :disabled="isConnected"
+                />
+                Web Serial API
+              </label>
+              <label class="radio-label">
+                <input
+                  type="radio"
+                  value="usb"
+                  v-model="connectionType"
+                  :disabled="isConnected"
+                />
+                WebUSB API
+              </label>
+            </div>
+          </div>
+
           <div class="control-buttons">
             <button
               @click="toggleConnection"

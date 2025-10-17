@@ -407,6 +407,152 @@ class SerialManager {
   }
 }
 
+// WebUSB Manager class for USB connections
+class USBManager {
+  constructor() {
+    this.device = null;
+    this.interfaceNumber = null;
+    this.endpointIn = null;
+    this.endpointOut = null;
+    this.onPacketReceived = null;
+    this.onConnectionChange = null;
+    this.onRawDataReceived = null;
+    this.buffer = "";
+    this.reading = false;
+  }
+
+  async connect(device) {
+    try {
+      this.device = device;
+
+      // Open device
+      await this.device.open();
+
+      // Select configuration (usually 1)
+      if (this.device.configuration === null) {
+        await this.device.selectConfiguration(1);
+      }
+
+      // Find the first interface
+      const interfaces = this.device.configuration.interfaces;
+      if (interfaces.length === 0) {
+        throw new Error("No interfaces found on USB device");
+      }
+
+      // Claim the first interface
+      this.interfaceNumber = interfaces[0].interfaceNumber;
+      await this.device.claimInterface(this.interfaceNumber);
+
+      // Find IN and OUT endpoints
+      const alternate = interfaces[0].alternate;
+      for (const endpoint of alternate.endpoints) {
+        if (endpoint.direction === "in" && endpoint.type === "bulk") {
+          this.endpointIn = endpoint.endpointNumber;
+        } else if (endpoint.direction === "out" && endpoint.type === "bulk") {
+          this.endpointOut = endpoint.endpointNumber;
+        }
+      }
+
+      if (!this.endpointIn) {
+        throw new Error("No IN endpoint found on USB device");
+      }
+
+      this.onConnectionChange?.(true);
+
+      // Start reading
+      this.reading = true;
+      this.readLoop();
+    } catch (error) {
+      console.error("USB connection error:", error);
+      this.onConnectionChange?.(false);
+      throw error;
+    }
+  }
+
+  async readLoop() {
+    try {
+      while (this.reading && this.device) {
+        // Read data from USB device
+        const result = await this.device.transferIn(this.endpointIn, 64);
+
+        if (result.status === "ok" && result.data && result.data.byteLength > 0) {
+          // Decode bytes to string
+          const decoder = new TextDecoder();
+          const text = decoder.decode(result.data);
+          this.processData(text);
+        }
+      }
+    } catch (error) {
+      console.error("USB read error:", error);
+      // Handle device disconnection errors
+      if (
+        error.message.includes("device has been lost") ||
+        error.message.includes("NetworkError") ||
+        error.name === "NetworkError"
+      ) {
+        console.log("USB device lost, triggering disconnection handling");
+        await this.handleDisconnection();
+      }
+    }
+  }
+
+  processData(data) {
+    this.buffer += data;
+
+    // Debug log raw data
+    if (this.onRawDataReceived) {
+      this.onRawDataReceived(data);
+    }
+
+    const lines = this.buffer.split("\r");
+
+    // Keep the last incomplete line in buffer
+    this.buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      if (line.trim()) {
+        console.log("Processing USB line:", line);
+        const packet = ProtocolAlge.parsePacket(line);
+        if (packet) {
+          this.onPacketReceived?.(packet);
+        } else {
+          console.log("Failed to parse USB packet:", line);
+        }
+      }
+    }
+  }
+
+  async disconnect() {
+    this.reading = false;
+
+    if (this.device) {
+      try {
+        if (this.interfaceNumber !== null) {
+          await this.device.releaseInterface(this.interfaceNumber);
+        }
+        await this.device.close();
+      } catch (error) {
+        console.error("USB disconnect error:", error);
+      }
+      this.device = null;
+    }
+
+    this.onConnectionChange?.(false);
+  }
+
+  isConnected() {
+    return this.device !== null && this.device.opened;
+  }
+
+  async handleDisconnection() {
+    if (this.device) {
+      this.device = null;
+      this.reading = false;
+      this.onConnectionChange?.(false);
+    }
+  }
+}
+
 // Helper to get device description from port info
 function getDeviceDescription(port) {
   try {
@@ -461,6 +607,42 @@ function portMatchesDeviceInfo(port, deviceInfo) {
   }
 }
 
+// Helper to get USB device description
+function getUSBDeviceDescription(device) {
+  try {
+    if (device.vendorId && device.productId) {
+      return `VID: 0x${device.vendorId.toString(16).toUpperCase()}, PID: 0x${device.productId.toString(16).toUpperCase()}`;
+    }
+    return 'Unknown USB Device';
+  } catch (error) {
+    return 'Unknown USB Device';
+  }
+}
+
+// Helper to check if two USB devices are the same
+function isSameUSBDevice(device1, device2) {
+  if (!device1 || !device2) return false;
+  try {
+    return device1.vendorId === device2.vendorId &&
+           device1.productId === device2.productId;
+  } catch (error) {
+    return false;
+  }
+}
+
+// Helper to get USB device info (VID/PID)
+function getUSBDeviceInfo(device) {
+  if (!device) return null;
+  try {
+    return {
+      vendorId: device.vendorId,
+      productId: device.productId
+    };
+  } catch (error) {
+    return null;
+  }
+}
+
 // Vue application
 createApp({
   data() {
@@ -492,6 +674,9 @@ createApp({
         },
       },
       serialManager: null,
+      usbManager: null,
+      connectionType: 'serial', // 'serial' or 'usb'
+      selectedDevice: null, // For USB devices
       startTime: null,
       startTimeAbsolute: null,
       activeUserId: null, // Track which user's timing session is active
@@ -1199,57 +1384,125 @@ createApp({
         this.settings.autoConnectEnabled = false;
         this.addDebugMessage("User disconnected - auto-connect disabled");
         this.persistSettings();
-        await this.serialManager.disconnect();
+
+        // Disconnect based on connection type
+        if (this.connectionType === 'usb' && this.usbManager) {
+          await this.usbManager.disconnect();
+          this.selectedDevice = null;
+        } else if (this.serialManager) {
+          await this.serialManager.disconnect();
+          this.selectedPort = null;
+        }
+
         this.lastConnectedPort = null;
-        this.selectedPort = null;
         this.timerPort = null;
         this.timerDeviceInfo = null; // Clear device info
         localStorage.removeItem('timerDeviceInfo'); // Clear from storage
       } else {
         try {
-          if (!this.selectedPort) {
-            // Get list of available ports to filter out MLED display
-            const availablePorts = await navigator.serial.getPorts();
-            const filters = [];
+          if (this.connectionType === 'usb') {
+            // WebUSB connection
+            if (!this.selectedDevice) {
+              // Request USB device from user
+              const filters = [];
 
-            // If MLED is connected, exclude that port from the selection
-            if (this.mledPort) {
-              console.log('MLED display already connected - will show warning if same device selected');
+              this.selectedDevice = await navigator.usb.requestDevice({ filters });
+
+              // Log device info
+              const deviceInfo = getUSBDeviceDescription(this.selectedDevice);
+              this.addDebugMessage(`Timer USB device selected: ${deviceInfo}`);
             }
 
-            // Request port from user (with filters if available)
-            this.selectedPort = await navigator.serial.requestPort({ filters });
+            // Create USB manager if needed
+            if (!this.usbManager) {
+              this.usbManager = new USBManager();
+              this.usbManager.onPacketReceived = this.handlePacket.bind(this);
+              this.usbManager.onRawDataReceived = (data) => {
+                this.rawDataBuffer += data;
+                if (this.rawDataBuffer.length > 1000) {
+                  this.rawDataBuffer = this.rawDataBuffer.slice(-1000);
+                }
+              };
+              this.usbManager.onConnectionChange = (connected) => {
+                this.isConnected = connected;
+                if (connected) {
+                  this.connectionStatus = "Connected (USB)";
+                  this.addDebugMessage("USB connection established");
+                } else {
+                  this.connectionStatus = "Disconnected";
+                  this.timerStatus = "Disconnected";
+                  this.isConnected = false;
+                  this.isRunning = false;
+                  this.selectedDevice = null;
+                  this.addDebugMessage("USB disconnected");
 
-            // Check if this port is already used by MLED
-            if (this.mledPort && isSamePort(this.selectedPort, this.mledPort)) {
-              alert('This device appears to be already connected as MLED Display. Please select the timer device instead.');
-              this.selectedPort = null;
-              return;
+                  // Show connection lost modal if not manual
+                  if (!this.manualDisconnect) {
+                    this.showConnectionLostModal = true;
+                  }
+                  this.manualDisconnect = false;
+                }
+              };
             }
 
-            // Log device info
-            const deviceInfo = getDeviceDescription(this.selectedPort);
-            this.addDebugMessage(`Timer device selected: ${deviceInfo}`);
+            await this.usbManager.connect(this.selectedDevice);
+            this.timerDeviceInfo = getUSBDeviceInfo(this.selectedDevice);
+            this.timerStatus = "Ready";
+            this.settings.autoConnectEnabled = true;
+            this.addDebugMessage("User connected via USB - auto-connect enabled");
+            console.log('💾 Timer USB device info saved:', this.timerDeviceInfo);
+            localStorage.setItem('timerDeviceInfo', JSON.stringify(this.timerDeviceInfo));
+            localStorage.setItem('timerConnectionType', 'usb');
+            this.persistSettings();
+          } else {
+            // Web Serial connection (original code)
+            if (!this.selectedPort) {
+              // Get list of available ports to filter out MLED display
+              const availablePorts = await navigator.serial.getPorts();
+              const filters = [];
+
+              // If MLED is connected, exclude that port from the selection
+              if (this.mledPort) {
+                console.log('MLED display already connected - will show warning if same device selected');
+              }
+
+              // Request port from user (with filters if available)
+              this.selectedPort = await navigator.serial.requestPort({ filters });
+
+              // Check if this port is already used by MLED
+              if (this.mledPort && isSamePort(this.selectedPort, this.mledPort)) {
+                alert('This device appears to be already connected as MLED Display. Please select the timer device instead.');
+                this.selectedPort = null;
+                return;
+              }
+
+              // Log device info
+              const deviceInfo = getDeviceDescription(this.selectedPort);
+              this.addDebugMessage(`Timer device selected: ${deviceInfo}`);
+            }
+
+            await this.serialManager.connect(this.selectedPort);
+            this.lastConnectedPort = this.selectedPort;
+            this.timerPort = this.selectedPort;
+            this.timerDeviceInfo = getDeviceInfo(this.selectedPort); // Save device info
+            this.timerStatus = "Ready";
+            // Re-enable auto-connect when user manually connects
+            this.settings.autoConnectEnabled = true;
+            this.addDebugMessage("User connected - auto-connect enabled");
+            console.log('💾 Timer device info saved:', this.timerDeviceInfo);
+            // Save device info to localStorage
+            localStorage.setItem('timerDeviceInfo', JSON.stringify(this.timerDeviceInfo));
+            localStorage.setItem('timerConnectionType', 'serial');
+            this.persistSettings();
           }
-
-          await this.serialManager.connect(this.selectedPort);
-          this.lastConnectedPort = this.selectedPort;
-          this.timerPort = this.selectedPort;
-          this.timerDeviceInfo = getDeviceInfo(this.selectedPort); // Save device info
-          this.timerStatus = "Ready";
-          // Re-enable auto-connect when user manually connects
-          this.settings.autoConnectEnabled = true;
-          this.addDebugMessage("User connected - auto-connect enabled");
-          console.log('💾 Timer device info saved:', this.timerDeviceInfo);
-          // Save device info to localStorage
-          localStorage.setItem('timerDeviceInfo', JSON.stringify(this.timerDeviceInfo));
-          this.persistSettings();
         } catch (error) {
           // Show alert only for actual connection errors (not user cancellation)
           if (error.name !== 'NotFoundError' && error.name !== 'AbortError') {
-            alert('Unable to connect to Timer device.\n\nPossible reasons:\n• Device is already in use by another application\n• USB cable is disconnected\n• Device requires drivers to be installed\n\nPlease check the connection and try again.');
+            const connectionTypeText = this.connectionType === 'usb' ? 'USB' : 'Serial';
+            alert(`Unable to connect to Timer device (${connectionTypeText}).\n\nPossible reasons:\n• Device is already in use by another application\n• USB cable is disconnected\n• Device requires drivers to be installed\n\nPlease check the connection and try again.`);
           }
           this.selectedPort = null;
+          this.selectedDevice = null;
           this.lastConnectedPort = null;
           this.timerPort = null;
         }
@@ -1862,58 +2115,139 @@ createApp({
 
     async attemptAutoConnect() {
       try {
-        // Load saved device info from localStorage
+        // Load saved device info and connection type from localStorage
         const savedDeviceInfo = localStorage.getItem('timerDeviceInfo');
+        const savedConnectionType = localStorage.getItem('timerConnectionType') || 'serial';
+        this.connectionType = savedConnectionType;
+
         if (savedDeviceInfo) {
           this.timerDeviceInfo = JSON.parse(savedDeviceInfo);
           console.log('📂 Loaded timer device info from storage:', this.timerDeviceInfo);
         }
 
-        // Get previously authorized ports
-        const ports = await navigator.serial.getPorts();
+        if (savedConnectionType === 'usb' && 'usb' in navigator) {
+          // WebUSB auto-connect
+          const devices = await navigator.usb.getDevices();
 
-        if (ports.length > 0) {
-          let targetPort = null;
+          if (devices.length > 0) {
+            let targetDevice = null;
 
-          // If we have saved device info, try to find matching port
-          if (this.timerDeviceInfo) {
-            for (const port of ports) {
-              if (portMatchesDeviceInfo(port, this.timerDeviceInfo)) {
-                targetPort = port;
-                this.addDebugMessage('Found saved timer device for auto-connect');
-                break;
+            // If we have saved device info, try to find matching device
+            if (this.timerDeviceInfo) {
+              for (const device of devices) {
+                if (device.vendorId === this.timerDeviceInfo.vendorId &&
+                    device.productId === this.timerDeviceInfo.productId) {
+                  targetDevice = device;
+                  this.addDebugMessage('Found saved USB timer device for auto-connect');
+                  break;
+                }
               }
             }
+
+            // If no saved device or not found, use first available device
+            if (!targetDevice) {
+              targetDevice = devices[0];
+              this.addDebugMessage('Using first available USB device for auto-connect');
+            }
+
+            // Log device info
+            const deviceInfo = getUSBDeviceDescription(targetDevice);
+            this.addDebugMessage(
+              `Attempting USB auto-connection to previously used device... (${deviceInfo})`
+            );
+
+            // Create USB manager if needed
+            if (!this.usbManager) {
+              this.usbManager = new USBManager();
+              this.usbManager.onPacketReceived = this.handlePacket.bind(this);
+              this.usbManager.onRawDataReceived = (data) => {
+                this.rawDataBuffer += data;
+                if (this.rawDataBuffer.length > 1000) {
+                  this.rawDataBuffer = this.rawDataBuffer.slice(-1000);
+                }
+              };
+              this.usbManager.onConnectionChange = (connected) => {
+                this.isConnected = connected;
+                if (connected) {
+                  this.connectionStatus = "Connected (USB)";
+                  this.addDebugMessage("USB connection established");
+                } else {
+                  this.connectionStatus = "Disconnected";
+                  this.timerStatus = "Disconnected";
+                  this.isConnected = false;
+                  this.isRunning = false;
+                  this.selectedDevice = null;
+                  this.addDebugMessage("USB disconnected");
+
+                  if (!this.manualDisconnect) {
+                    this.showConnectionLostModal = true;
+                  }
+                  this.manualDisconnect = false;
+                }
+              };
+            }
+
+            await this.usbManager.connect(targetDevice);
+            this.selectedDevice = targetDevice;
+            this.timerDeviceInfo = getUSBDeviceInfo(targetDevice);
+            this.timerStatus = "Ready";
+
+            localStorage.setItem('timerDeviceInfo', JSON.stringify(this.timerDeviceInfo));
+
+            this.addDebugMessage("USB auto-connection successful!");
+            console.log('💾 USB timer device info saved on auto-connect:', this.timerDeviceInfo);
+          } else {
+            this.addDebugMessage(
+              "No previously authorized USB devices found for auto-connection."
+            );
           }
-
-          // If no saved device or not found, use first available port
-          if (!targetPort) {
-            targetPort = ports[0];
-            this.addDebugMessage('Using first available port for auto-connect');
-          }
-
-          // Log device info
-          const deviceInfo = getDeviceDescription(targetPort);
-          this.addDebugMessage(
-            `Attempting auto-connection to previously used port... (${deviceInfo})`
-          );
-
-          await this.serialManager.connect(targetPort);
-          this.selectedPort = targetPort;
-          this.lastConnectedPort = targetPort;
-          this.timerPort = targetPort;
-          this.timerDeviceInfo = getDeviceInfo(targetPort); // Save device info
-          this.timerStatus = "Ready";
-
-          // Save device info to localStorage
-          localStorage.setItem('timerDeviceInfo', JSON.stringify(this.timerDeviceInfo));
-
-          this.addDebugMessage("Auto-connection successful!");
-          console.log('💾 Timer device info saved on auto-connect:', this.timerDeviceInfo);
         } else {
-          this.addDebugMessage(
-            "No previously authorized ports found for auto-connection."
-          );
+          // Web Serial auto-connect (original code)
+          const ports = await navigator.serial.getPorts();
+
+          if (ports.length > 0) {
+            let targetPort = null;
+
+            // If we have saved device info, try to find matching port
+            if (this.timerDeviceInfo) {
+              for (const port of ports) {
+                if (portMatchesDeviceInfo(port, this.timerDeviceInfo)) {
+                  targetPort = port;
+                  this.addDebugMessage('Found saved timer device for auto-connect');
+                  break;
+                }
+              }
+            }
+
+            // If no saved device or not found, use first available port
+            if (!targetPort) {
+              targetPort = ports[0];
+              this.addDebugMessage('Using first available port for auto-connect');
+            }
+
+            // Log device info
+            const deviceInfo = getDeviceDescription(targetPort);
+            this.addDebugMessage(
+              `Attempting auto-connection to previously used port... (${deviceInfo})`
+            );
+
+            await this.serialManager.connect(targetPort);
+            this.selectedPort = targetPort;
+            this.lastConnectedPort = targetPort;
+            this.timerPort = targetPort;
+            this.timerDeviceInfo = getDeviceInfo(targetPort); // Save device info
+            this.timerStatus = "Ready";
+
+            // Save device info to localStorage
+            localStorage.setItem('timerDeviceInfo', JSON.stringify(this.timerDeviceInfo));
+
+            this.addDebugMessage("Auto-connection successful!");
+            console.log('💾 Timer device info saved on auto-connect:', this.timerDeviceInfo);
+          } else {
+            this.addDebugMessage(
+              "No previously authorized ports found for auto-connection."
+            );
+          }
         }
       } catch (error) {
         this.addDebugMessage(`Auto-connection failed: ${error.message}`);
@@ -2762,40 +3096,136 @@ createApp({
         // Close the connection lost modal
         this.showConnectionLostModal = false;
 
-        // Clear any stale port references
+        // Clear any stale references
         this.selectedPort = null;
+        this.selectedDevice = null;
         this.lastConnectedPort = null;
         this.timerPort = null;
 
-        // Get fresh list of authorized ports
-        const ports = await navigator.serial.getPorts();
+        const savedConnectionType = localStorage.getItem('timerConnectionType') || 'serial';
 
-        if (ports.length > 0) {
-          // Try connecting to the first available port
-          this.selectedPort = ports[0];
-          await this.serialManager.connect(this.selectedPort);
-          this.lastConnectedPort = this.selectedPort;
-          this.timerPort = this.selectedPort;
-          this.timerStatus = "Ready";
-          this.addDebugMessage(
-            "Reconnection successful using fresh port reference"
-          );
-          // Re-enable auto-connect when user successfully reconnects
-          this.settings.autoConnectEnabled = true;
-          this.persistSettings();
+        if (savedConnectionType === 'usb' && 'usb' in navigator) {
+          // WebUSB reconnection
+          const devices = await navigator.usb.getDevices();
+
+          if (devices.length > 0) {
+            // Try connecting to the first available device
+            this.selectedDevice = devices[0];
+
+            // Create USB manager if needed
+            if (!this.usbManager) {
+              this.usbManager = new USBManager();
+              this.usbManager.onPacketReceived = this.handlePacket.bind(this);
+              this.usbManager.onRawDataReceived = (data) => {
+                this.rawDataBuffer += data;
+                if (this.rawDataBuffer.length > 1000) {
+                  this.rawDataBuffer = this.rawDataBuffer.slice(-1000);
+                }
+              };
+              this.usbManager.onConnectionChange = (connected) => {
+                this.isConnected = connected;
+                if (connected) {
+                  this.connectionStatus = "Connected (USB)";
+                  this.addDebugMessage("USB connection established");
+                } else {
+                  this.connectionStatus = "Disconnected";
+                  this.timerStatus = "Disconnected";
+                  this.isConnected = false;
+                  this.isRunning = false;
+                  this.selectedDevice = null;
+                  this.addDebugMessage("USB disconnected");
+
+                  if (!this.manualDisconnect) {
+                    this.showConnectionLostModal = true;
+                  }
+                  this.manualDisconnect = false;
+                }
+              };
+            }
+
+            await this.usbManager.connect(this.selectedDevice);
+            this.timerStatus = "Ready";
+            this.addDebugMessage(
+              "USB reconnection successful using fresh device reference"
+            );
+            // Re-enable auto-connect when user successfully reconnects
+            this.settings.autoConnectEnabled = true;
+            this.persistSettings();
+          } else {
+            // No authorized devices - user needs to grant permission again
+            this.addDebugMessage(
+              "No authorized USB devices found - requesting new device authorization"
+            );
+            this.selectedDevice = await navigator.usb.requestDevice({ filters: [] });
+
+            // Create USB manager if needed
+            if (!this.usbManager) {
+              this.usbManager = new USBManager();
+              this.usbManager.onPacketReceived = this.handlePacket.bind(this);
+              this.usbManager.onRawDataReceived = (data) => {
+                this.rawDataBuffer += data;
+                if (this.rawDataBuffer.length > 1000) {
+                  this.rawDataBuffer = this.rawDataBuffer.slice(-1000);
+                }
+              };
+              this.usbManager.onConnectionChange = (connected) => {
+                this.isConnected = connected;
+                if (connected) {
+                  this.connectionStatus = "Connected (USB)";
+                  this.addDebugMessage("USB connection established");
+                } else {
+                  this.connectionStatus = "Disconnected";
+                  this.timerStatus = "Disconnected";
+                  this.isConnected = false;
+                  this.isRunning = false;
+                  this.selectedDevice = null;
+                  this.addDebugMessage("USB disconnected");
+
+                  if (!this.manualDisconnect) {
+                    this.showConnectionLostModal = true;
+                  }
+                  this.manualDisconnect = false;
+                }
+              };
+            }
+
+            await this.usbManager.connect(this.selectedDevice);
+            this.timerStatus = "Ready";
+            // Re-enable auto-connect when user successfully reconnects
+            this.settings.autoConnectEnabled = true;
+            this.persistSettings();
+          }
         } else {
-          // No authorized ports - user needs to grant permission again
-          this.addDebugMessage(
-            "No authorized ports found - requesting new port authorization"
-          );
-          this.selectedPort = await navigator.serial.requestPort();
-          await this.serialManager.connect(this.selectedPort);
-          this.lastConnectedPort = this.selectedPort;
-          this.timerPort = this.selectedPort;
-          this.timerStatus = "Ready";
-          // Re-enable auto-connect when user successfully reconnects
-          this.settings.autoConnectEnabled = true;
-          this.persistSettings();
+          // Web Serial reconnection (original code)
+          const ports = await navigator.serial.getPorts();
+
+          if (ports.length > 0) {
+            // Try connecting to the first available port
+            this.selectedPort = ports[0];
+            await this.serialManager.connect(this.selectedPort);
+            this.lastConnectedPort = this.selectedPort;
+            this.timerPort = this.selectedPort;
+            this.timerStatus = "Ready";
+            this.addDebugMessage(
+              "Reconnection successful using fresh port reference"
+            );
+            // Re-enable auto-connect when user successfully reconnects
+            this.settings.autoConnectEnabled = true;
+            this.persistSettings();
+          } else {
+            // No authorized ports - user needs to grant permission again
+            this.addDebugMessage(
+              "No authorized ports found - requesting new port authorization"
+            );
+            this.selectedPort = await navigator.serial.requestPort();
+            await this.serialManager.connect(this.selectedPort);
+            this.lastConnectedPort = this.selectedPort;
+            this.timerPort = this.selectedPort;
+            this.timerStatus = "Ready";
+            // Re-enable auto-connect when user successfully reconnects
+            this.settings.autoConnectEnabled = true;
+            this.persistSettings();
+          }
         }
       } catch (error) {
         if (error.name !== "NotFoundError") {
@@ -2803,8 +3233,9 @@ createApp({
           this.addDebugMessage(`Reconnection failed: ${error.message}`);
           alert("Failed to reconnect: " + error.message);
         }
-        // Reset port references on failure
+        // Reset references on failure
         this.selectedPort = null;
+        this.selectedDevice = null;
         this.lastConnectedPort = null;
         this.timerPort = null;
       }

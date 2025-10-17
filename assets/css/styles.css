@@ -267,6 +267,50 @@ body.dark-mode {
     transition: background 0.3s;
 }
 
+.connection-type-selector {
+    text-align: center;
+    margin: 1rem 0;
+    padding: 0.75rem;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    transition: background 0.3s;
+}
+
+.connection-type-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    transition: color 0.3s;
+}
+
+.connection-type-options {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-weight: normal;
+    color: var(--text-primary);
+    transition: color 0.3s;
+}
+
+.radio-label input[type="radio"] {
+    cursor: pointer;
+    width: auto;
+}
+
+.radio-label input[type="radio"]:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
 /* Buttons */
 .btn {
     display: inline-flex;
