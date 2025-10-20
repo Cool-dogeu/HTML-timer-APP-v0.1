@@ -449,32 +449,88 @@ class USBManager {
     try {
       this.device = device;
 
-      // Open device
-      await this.device.open();
+      console.log('USBManager: Attempting to connect to device:', {
+        vendorId: '0x' + this.device.vendorId.toString(16).padStart(4, '0'),
+        productId: '0x' + this.device.productId.toString(16).padStart(4, '0'),
+        productName: this.device.productName,
+        opened: this.device.opened
+      });
+
+      // Open device (skip if already opened)
+      if (!this.device.opened) {
+        console.log('USBManager: Opening device...');
+        try {
+          await this.device.open();
+          console.log('USBManager: Device opened successfully');
+        } catch (error) {
+          console.error('USBManager: Failed to open device:', error);
+          if (error.name === 'SecurityError') {
+            throw new Error('SecurityError: Access denied. Device may be in use by another application or needs WinUSB driver on Windows.');
+          } else if (error.name === 'NetworkError') {
+            throw new Error('NetworkError: Device disconnected or not accessible.');
+          }
+          throw error;
+        }
+      } else {
+        console.log('USBManager: Device already opened');
+      }
 
       // Select configuration (usually 1)
       if (this.device.configuration === null) {
+        console.log('USBManager: Selecting configuration 1...');
         await this.device.selectConfiguration(1);
+        console.log('USBManager: Configuration selected');
+      } else {
+        console.log('USBManager: Configuration already selected:', this.device.configuration.configurationValue);
       }
 
       // Try to detach kernel driver if available (Linux)
       if (this.device.detachKernelDriver) {
         try {
+          console.log('USBManager: Attempting to detach kernel driver...');
           await this.device.detachKernelDriver(0);
+          console.log('USBManager: Kernel driver detached');
         } catch(e) {
-          console.log('Kernel driver detach not needed or failed:', e);
+          console.log('USBManager: Kernel driver detach not needed or failed:', e.message);
         }
+      }
+
+      // Log available interfaces
+      console.log('USBManager: Available interfaces:', this.device.configuration.interfaces.length);
+      for (const iface of this.device.configuration.interfaces) {
+        console.log(`  Interface ${iface.interfaceNumber}:`, {
+          claimed: iface.claimed,
+          alternates: iface.alternates.length
+        });
       }
 
       // Claim interface 0
       this.interfaceNumber = 0;
-      await this.device.claimInterface(this.interfaceNumber);
+      console.log(`USBManager: Attempting to claim interface ${this.interfaceNumber}...`);
+
+      try {
+        await this.device.claimInterface(this.interfaceNumber);
+        console.log(`USBManager: Interface ${this.interfaceNumber} claimed successfully`);
+      } catch (error) {
+        console.error(`USBManager: Failed to claim interface ${this.interfaceNumber}:`, error);
+
+        if (error.name === 'SecurityError') {
+          throw new Error(`SecurityError: Cannot claim interface ${this.interfaceNumber}. The interface may be in use by the operating system or another application. On Windows, you may need to install the WinUSB driver using Zadig.`);
+        } else if (error.name === 'InvalidStateError') {
+          throw new Error(`InvalidStateError: Interface ${this.interfaceNumber} is already claimed. Close other applications using this device.`);
+        } else if (error.name === 'NotFoundError') {
+          throw new Error(`NotFoundError: Interface ${this.interfaceNumber} not found on this device.`);
+        }
+        throw error;
+      }
 
       // Use hardcoded endpoint for ALGE timers (0x81 masked to 0x01)
       this.endpointIn = 0x81 & 0x7f;  // Results in endpoint 1
       this.endpointOut = 0x01 & 0x7f;
 
-      console.log('USB connected with endpoint IN:', this.endpointIn, 'OUT:', this.endpointOut);
+      console.log('USBManager: USB connected successfully!');
+      console.log('  Endpoint IN:', this.endpointIn);
+      console.log('  Endpoint OUT:', this.endpointOut);
 
       this.onConnectionChange?.(true);
 
@@ -1734,8 +1790,9 @@ createApp({
       this.timerStatus = "Finished";
       console.log("✅ Display updated to:", this.displayTime);
 
-      // Route to MLED via Timer LINK if enabled
-      if (this.mledLinkEnabled && this.mledLinkToMled && (this.mledConnected || this.hdmiEnabled)) {
+      // Route to displays via Timer LINK if enabled
+      if ((this.mledLinkEnabled && this.mledLinkToMled && (this.mledConnected || this.hdmiEnabled)) ||
+          (this.hdmiLinkEnabled && this.hdmiWindowRef && !this.hdmiWindowRef.closed)) {
         this.routeTimerToMled(timeStr, "finished");
       }
 
@@ -3005,8 +3062,9 @@ createApp({
             this.settings.highPrecisionTime
           );
 
-          // Route running time to MLED via Timer LINK if enabled (update every 100ms to reduce traffic)
-          if (this.mledLinkEnabled && this.mledLinkToMled && (this.mledConnected || this.hdmiEnabled)) {
+          // Route running time to displays via Timer LINK if enabled (update every 100ms to reduce traffic)
+          if ((this.mledLinkEnabled && this.mledLinkToMled && (this.mledConnected || this.hdmiEnabled)) ||
+              (this.hdmiLinkEnabled && this.hdmiWindowRef && !this.hdmiWindowRef.closed)) {
             if (!this.mledLinkLastUpdate || Date.now() - this.mledLinkLastUpdate > 100) {
               this.routeTimerToMled(this.displayTime, "running");
               this.mledLinkLastUpdate = Date.now();
