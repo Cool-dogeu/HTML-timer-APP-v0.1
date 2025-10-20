@@ -1,20 +1,23 @@
 <template>
-  <div class="display-view">
-    <h1>Display View</h1>
-    <p>MLED display controls will go here</p>
+  <div class="mled-container">
+    <MledStickyControls />
+    <MledTextModule />
+    <MledCoursewalksModule />
+    <MledCountdownModule />
+    <MledLinkModule />
+    <MledDataModule />
   </div>
 </template>
 
 <script setup>
-import { useMledStore } from '@stores/mled'
-import { useSettingsStore } from '@stores/settings'
-
-const mledStore = useMledStore()
-const settingsStore = useSettingsStore()
+import MledStickyControls from '@/components/display/MledStickyControls.vue'
+import MledTextModule from '@/components/display/MledTextModule.vue'
+import MledCoursewalksModule from '@/components/display/MledCoursewalksModule.vue'
+import MledCountdownModule from '@/components/display/MledCountdownModule.vue'
+import MledLinkModule from '@/components/display/MledLinkModule.vue'
+import MledDataModule from '@/components/display/MledDataModule.vue'
 </script>
 
 <style scoped>
-.display-view {
-  padding: 1rem;
-}
+/* Component-specific styles if needed - most styles are in main.css */
 </style>
