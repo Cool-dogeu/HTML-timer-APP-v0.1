@@ -1,20 +1,21 @@
 <template>
-  <div class="hdmi-view">
-    <h1>HDMI View</h1>
-    <p>HDMI output controls will go here</p>
+  <div class="mled-container">
+    <HdmiStickyControls />
+    <HdmiTextModule />
+    <HdmiCoursewalksModule />
+    <HdmiCountdownModule />
+    <HdmiLinkModule />
   </div>
 </template>
 
 <script setup>
-import { useHdmiStore } from '@stores/hdmi'
-import { useSettingsStore } from '@stores/settings'
-
-const hdmiStore = useHdmiStore()
-const settingsStore = useSettingsStore()
+import HdmiStickyControls from '@/components/hdmi/HdmiStickyControls.vue'
+import HdmiTextModule from '@/components/hdmi/HdmiTextModule.vue'
+import HdmiCoursewalksModule from '@/components/hdmi/HdmiCoursewalksModule.vue'
+import HdmiCountdownModule from '@/components/hdmi/HdmiCountdownModule.vue'
+import HdmiLinkModule from '@/components/hdmi/HdmiLinkModule.vue'
 </script>
 
 <style scoped>
-.hdmi-view {
-  padding: 1rem;
-}
+/* Component-specific styles if needed - most styles are in main.css */
 </style>
