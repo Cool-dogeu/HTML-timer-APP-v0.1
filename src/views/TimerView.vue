@@ -1,22 +1,21 @@
 <template>
-  <div class="timer-view">
-    <h1>Timer View</h1>
-    <p>Main timer interface will go here</p>
-  </div>
+  <main class="main-container">
+    <div class="timer-content-wrapper">
+      <TimerDisplay />
+      <ConnectionControls />
+      <ResultsHistory />
+      <ResultsActions />
+    </div>
+  </main>
 </template>
 
 <script setup>
-import { useTimerStore } from '@stores/timer'
-import { useSerialStore } from '@stores/serial'
-import { useSettingsStore } from '@stores/settings'
-
-const timerStore = useTimerStore()
-const serialStore = useSerialStore()
-const settingsStore = useSettingsStore()
+import TimerDisplay from '@/components/timer/TimerDisplay.vue'
+import ConnectionControls from '@/components/timer/ConnectionControls.vue'
+import ResultsHistory from '@/components/timer/ResultsHistory.vue'
+import ResultsActions from '@/components/timer/ResultsActions.vue'
 </script>
 
 <style scoped>
-.timer-view {
-  padding: 1rem;
-}
+/* Component-specific styles if needed - most styles are in main.css */
 </style>
