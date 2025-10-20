@@ -437,8 +437,12 @@ class USBManager {
     this.onPacketReceived = null;
     this.onConnectionChange = null;
     this.onRawDataReceived = null;
-    this.buffer = "";
+    this.buffer = [];  // Change to array for byte-by-byte processing
     this.reading = false;
+
+    // ALGE Timer constants (from timy.html)
+    this.READ_SIZE = 16;
+    this.CR = 0x0d;
   }
 
   async connect(device) {
@@ -453,29 +457,24 @@ class USBManager {
         await this.device.selectConfiguration(1);
       }
 
-      // Find the first interface
-      const interfaces = this.device.configuration.interfaces;
-      if (interfaces.length === 0) {
-        throw new Error("No interfaces found on USB device");
-      }
-
-      // Claim the first interface
-      this.interfaceNumber = interfaces[0].interfaceNumber;
-      await this.device.claimInterface(this.interfaceNumber);
-
-      // Find IN and OUT endpoints
-      const alternate = interfaces[0].alternate;
-      for (const endpoint of alternate.endpoints) {
-        if (endpoint.direction === "in" && endpoint.type === "bulk") {
-          this.endpointIn = endpoint.endpointNumber;
-        } else if (endpoint.direction === "out" && endpoint.type === "bulk") {
-          this.endpointOut = endpoint.endpointNumber;
+      // Try to detach kernel driver if available (Linux)
+      if (this.device.detachKernelDriver) {
+        try {
+          await this.device.detachKernelDriver(0);
+        } catch(e) {
+          console.log('Kernel driver detach not needed or failed:', e);
         }
       }
 
-      if (!this.endpointIn) {
-        throw new Error("No IN endpoint found on USB device");
-      }
+      // Claim interface 0
+      this.interfaceNumber = 0;
+      await this.device.claimInterface(this.interfaceNumber);
+
+      // Use hardcoded endpoint for ALGE timers (0x81 masked to 0x01)
+      this.endpointIn = 0x81 & 0x7f;  // Results in endpoint 1
+      this.endpointOut = 0x01 & 0x7f;
+
+      console.log('USB connected with endpoint IN:', this.endpointIn, 'OUT:', this.endpointOut);
 
       this.onConnectionChange?.(true);
 
@@ -492,14 +491,45 @@ class USBManager {
   async readLoop() {
     try {
       while (this.reading && this.device) {
-        // Read data from USB device
-        const result = await this.device.transferIn(this.endpointIn, 64);
+        // Read data from USB device using ALGE-specific READ_SIZE
+        const result = await this.device.transferIn(this.endpointIn, this.READ_SIZE);
 
         if (result.status === "ok" && result.data && result.data.byteLength > 0) {
-          // Decode bytes to string
-          const decoder = new TextDecoder();
-          const text = decoder.decode(result.data);
-          this.processData(text);
+          // Process byte-by-byte like timy.html
+          const bytes = new Uint8Array(result.data.buffer);
+
+          // Debug log raw data
+          if (this.onRawDataReceived) {
+            const text = new TextDecoder('utf-8', {fatal: false}).decode(bytes);
+            this.onRawDataReceived(text);
+          }
+
+          for (let i = 0; i < bytes.length; i++) {
+            const b = bytes[i];
+
+            if (b === this.CR) {
+              // End of line - decode buffer and process
+              const line = new TextDecoder('utf-8', {fatal: false})
+                .decode(new Uint8Array(this.buffer))
+                .trim();
+
+              this.buffer = [];  // Reset buffer
+
+              // Filter out TIMY status messages
+              if (line && !/^TIMY:\s*\d+\s*$/.test(line)) {
+                console.log("Processing USB line:", line);
+                const packet = ProtocolAlge.parsePacket(line);
+                if (packet) {
+                  this.onPacketReceived?.(packet);
+                } else {
+                  console.log("Failed to parse USB packet:", line);
+                }
+              }
+            } else {
+              // Add byte to buffer
+              this.buffer.push(b);
+            }
+          }
         }
       }
     } catch (error) {
@@ -512,32 +542,6 @@ class USBManager {
       ) {
         console.log("USB device lost, triggering disconnection handling");
         await this.handleDisconnection();
-      }
-    }
-  }
-
-  processData(data) {
-    this.buffer += data;
-
-    // Debug log raw data
-    if (this.onRawDataReceived) {
-      this.onRawDataReceived(data);
-    }
-
-    const lines = this.buffer.split("\r");
-
-    // Keep the last incomplete line in buffer
-    this.buffer = lines.pop() || "";
-
-    for (const line of lines) {
-      if (line.trim()) {
-        console.log("Processing USB line:", line);
-        const packet = ProtocolAlge.parsePacket(line);
-        if (packet) {
-          this.onPacketReceived?.(packet);
-        } else {
-          console.log("Failed to parse USB packet:", line);
-        }
       }
     }
   }

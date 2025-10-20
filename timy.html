@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <title>USB Viewer – WebUSB</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background:#111; color:#eee; margin: 16px auto; max-width: 980px; }
+    h1 { font-size: 22px; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; margin: 10px 0; }
+    button { padding:8px 12px; background:#2b2b2b; color:#eee; border:1px solid #555; border-radius:6px; cursor:pointer; }
+    input { padding:8px 10px; background:#222; color:#eee; border:1px solid #444; border-radius:6px; min-width: 320px; }
+    #log { background:#000; color:#0f0; padding:10px; min-height:220px; max-height:320px; overflow:auto; white-space:pre-wrap; border-radius:8px; }
+    table { width:100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border:1px solid #333; padding:6px 8px; text-align:left; }
+    .pill { padding:4px 8px; border:1px solid #444; border-radius:999px; background:#1a1a1a; }
+  </style>
+</head>
+<body>
+  <h1>USB Viewer – WebUSB</h1>
+  <div class="row">
+    <button id="connect">Połącz przez WebUSB</button>
+    <span id="status" class="pill">Niepołączony</span>
+    <button id="clear">Wyczyść log</button>
+    <button id="export">Eksport CSV</button>
+  </div>
+
+  <div class="row">
+    <input id="hex" placeholder="hexy do wysłania, np. 54 49 4d 59 3f 0d">
+    <button id="send">Wyślij</button>
+  </div>
+
+  <div id="log"></div>
+
+  <h3>Linie</h3>
+  <table id="tbl">
+    <thead><tr><th>#</th><th>linia</th><th>czas</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+<script>
+let device = null;
+let connected = false;
+let readerRunning = false;
+let rows = [];
+const statusEl = document.getElementById('status');
+const logEl = document.getElementById('log');
+const tbody = document.querySelector('#tbl tbody');
+
+const VENDOR_ID = 0x0C4A;
+const PRODUCT_ID = 0x088B;
+const IFACE = 0;
+const EP_IN_NUM = 0x81 & 0x7f;
+const EP_OUT_NUM = 0x01 & 0x7f;
+const READ_SIZE = 16;
+const CR = 0x0d;
+const timeRe = /\b(\d{2}:\d{2}:\d{2}(?:[.,]\d{1,3})?)\b/;
+
+function log(s){
+  const t = new Date().toLocaleTimeString();
+  logEl.textContent += `[${t}] ${s}\n`;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function setStatus(s){ statusEl.textContent = s; }
+
+function addRow(line){
+  if (/^TIMY:\s*\d+\s*$/.test(line.trim())) return;
+  const m = line.match(timeRe);
+  const human = m ? m[1].replace(',', '.') : '';
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${rows.length+1}</td><td>${line}</td><td>${human}</td>`;
+  rows.push({line, human});
+  tbody.appendChild(tr);
+}
+
+async function startReader(){
+  if (!device || readerRunning) return;
+  readerRunning = true;
+  const buf = [];
+  try {
+    while (connected){
+      const res = await device.transferIn(EP_IN_NUM, READ_SIZE);
+      if (res.status !== 'ok'){
+        continue;
+      }
+      const bytes = new Uint8Array(res.data.buffer);
+      for (let i=0;i<bytes.length;i++){
+        const b = bytes[i];
+        if (b === CR){
+          const line = new TextDecoder('utf-8', {fatal:false}).decode(new Uint8Array(buf)).trim();
+          buf.length = 0;
+          if (/^TIMY:\s*\d+\s*$/.test(line)) continue; // filtr czystych czasów
+          addRow(line);
+          log('USB: ' + line);
+        } else {
+          buf.push(b);
+        }
+      }
+    }
+  } catch(e){
+    log('reader error: ' + e.message);
+  } finally {
+    readerRunning = false;
+  }
+}
+
+document.getElementById('connect').addEventListener('click', async () => {
+  if (!('usb' in navigator)){
+    alert('Twoja przeglądarka nie wspiera WebUSB. Użyj Chrome. Strona musi być z https albo localhost.');
+    return;
+  }
+  try {
+    device = await navigator.usb.requestDevice({
+      filters: [{ vendorId: VENDOR_ID, productId: PRODUCT_ID }]
+    });
+    await device.open();
+    if (device.configuration === null){
+      await device.selectConfiguration(1);
+    }
+    if (device.detachKernelDriver){
+      try { await device.detachKernelDriver(IFACE); } catch(e){}
+    }
+    await device.claimInterface(IFACE);
+    connected = true;
+    setStatus('Połączony');
+    log('connected via WebUSB');
+    startReader();
+  } catch(e){
+    log('connect error: ' + e.message);
+    setStatus('Błąd połączenia');
+  }
+});
+
+document.getElementById('send').addEventListener('click', async () => {
+  if (!device || !connected){
+    log('niepołączony');
+    return;
+  }
+  const parts = document.getElementById('hex').value.replace(/[,]/g,' ').trim().split(/\s+/).filter(Boolean);
+  const arr = [];
+  for (const p of parts){
+    const v = parseInt(p, 16);
+    if (Number.isNaN(v) || v < 0 || v > 255){ log('zły hex: ' + p); return; }
+    arr.push(v);
+  }
+  try {
+    const data = new Uint8Array(arr);
+    const res = await device.transferOut(EP_OUT_NUM, data);
+    log('wysłano ' + data.length + ' B, status=' + res.status);
+  } catch(e){
+    log('write error: ' + e.message);
+  }
+});
+
+document.getElementById('clear').addEventListener('click', () => {
+  logEl.textContent = '';
+  tbody.innerHTML = '';
+  rows = [];
+});
+
+document.getElementById('export').addEventListener('click', () => {
+  const csv = [['#','line','time']].concat(rows.map((r,i)=>[i+1,r.line,r.human]))
+    .map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(','))
+    .join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
+  a.download = 'timi.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+</script>
+</body>
+</html>
