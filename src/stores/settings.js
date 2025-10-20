@@ -38,10 +38,12 @@ export const useSettingsStore = defineStore('settings', () => {
   // Competition settings
   const competitionId = ref('')
 
-  // UI state
+  // UI state - Modal visibility
   const showSettings = ref(false)
   const showInfo = ref(false)
   const showRefreshConfirmation = ref(false)
+  const showClearConfirmation = ref(false)
+  const showCompactTimer = ref(false)
   const showApiKey = ref(false)
   const apiTestInProgress = ref(false)
   const apiTestResult = ref(null)
@@ -142,6 +144,13 @@ export const useSettingsStore = defineStore('settings', () => {
 
     saveSettings(settingsToSave)
     console.log('Settings saved')
+  }
+
+  /**
+   * Alias for persistSettings (for component compatibility)
+   */
+  function saveSettingsAlias() {
+    persistSettings()
   }
 
   /**
@@ -351,6 +360,34 @@ export const useSettingsStore = defineStore('settings', () => {
     window.location.reload()
   }
 
+  /**
+   * Open compact timer (Picture-in-Picture)
+   */
+  function openCompactTimer() {
+    showCompactTimer.value = true
+  }
+
+  /**
+   * Close compact timer
+   */
+  function closeCompactTimer() {
+    showCompactTimer.value = false
+  }
+
+  /**
+   * Confirm clear results action
+   */
+  function confirmClearResults() {
+    showClearConfirmation.value = true
+  }
+
+  /**
+   * Cancel clear results
+   */
+  function cancelClearResults() {
+    showClearConfirmation.value = false
+  }
+
   // ============================================================================
   // WATCHERS - Auto-save on changes (after initialization)
   // ============================================================================
@@ -386,6 +423,8 @@ export const useSettingsStore = defineStore('settings', () => {
     showSettings,
     showInfo,
     showRefreshConfirmation,
+    showClearConfirmation,
+    showCompactTimer,
     showApiKey,
     apiTestInProgress,
     apiTestResult,
@@ -399,6 +438,7 @@ export const useSettingsStore = defineStore('settings', () => {
     // Actions
     initialize,
     persistSettings,
+    saveSettings: saveSettingsAlias,
     toggleTheme,
     openSettings,
     closeSettings,
@@ -412,6 +452,10 @@ export const useSettingsStore = defineStore('settings', () => {
     confirmRefresh,
     cancelRefresh,
     refreshPage,
+    openCompactTimer,
+    closeCompactTimer,
+    confirmClearResults,
+    cancelClearResults,
   }
 })
 

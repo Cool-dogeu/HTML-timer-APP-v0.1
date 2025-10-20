@@ -7,6 +7,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { formatTime, getCurrentTimestamp } from '@services/formatters/TimeFormatter'
 import { saveResults, loadResults, clearResults as clearStoredResults } from '@services/storage/LocalStorageService'
+import { useSettingsStore } from './settings'
 
 export const useTimerStore = defineStore('timer', () => {
   // ============================================================================
@@ -225,6 +226,14 @@ export const useTimerStore = defineStore('timer', () => {
   }
 
   /**
+   * Update display time using current settings precision
+   */
+  function updateDisplayTime() {
+    const settingsStore = useSettingsStore()
+    updateDisplayPrecision(settingsStore.highPrecisionTime)
+  }
+
+  /**
    * Reset timer to ready state
    */
   function resetTimer() {
@@ -338,6 +347,7 @@ export const useTimerStore = defineStore('timer', () => {
     clearSelection,
     clearAllResults,
     updateDisplayPrecision,
+    updateDisplayTime,
     resetTimer,
     setCopyButtonEffect,
     copyResultToClipboard,
