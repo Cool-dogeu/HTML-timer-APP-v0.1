@@ -40,6 +40,11 @@ export const useSerialStore = defineStore('serial', () => {
   const debugMessages = ref([])
   const showDebugConsole = ref(false)
 
+  // Test runner state
+  const testRunning = ref(false)
+  const testTimeout = ref(null)
+  const testRunCount = ref(0)
+
   // ============================================================================
   // COMPUTED / GETTERS
   // ============================================================================
@@ -404,6 +409,189 @@ export const useSerialStore = defineStore('serial', () => {
   }
 
   // ============================================================================
+  // TEST RUNNER
+  // ============================================================================
+
+  /**
+   * Start automated test runs
+   */
+  function startTestRuns() {
+    testRunning.value = true
+    testRunCount.value = 0
+    addDebugMessage('Starting automated test runs...')
+    scheduleNextTestRun()
+  }
+
+  /**
+   * Stop automated test runs
+   */
+  function stopTestRuns() {
+    testRunning.value = false
+    if (testTimeout.value) {
+      clearTimeout(testTimeout.value)
+      testTimeout.value = null
+    }
+    addDebugMessage('Stopped automated test runs')
+  }
+
+  /**
+   * Schedule next test run with random delay
+   */
+  function scheduleNextTestRun() {
+    if (!testRunning.value) return
+
+    // Random delay between runs (2-5 seconds)
+    const delay = Math.random() * 3000 + 2000
+    testTimeout.value = setTimeout(() => {
+      simulateTestRun()
+    }, delay)
+  }
+
+  /**
+   * Simulate a single test run
+   */
+  function simulateTestRun() {
+    if (!testRunning.value) return
+
+    testRunCount.value++
+    const runTime = Math.random() * 30 + 25 // 25-55 seconds
+
+    addDebugMessage(`Test run #${testRunCount.value}: ${runTime.toFixed(3)}s`)
+
+    // Get timer store
+    const timerStore = useTimerStore()
+
+    // Simulate start packet (channel 0, absolute time)
+    const now = new Date()
+    const timeString = `${now.getHours().toString().padStart(2, '0')}:${now
+      .getMinutes()
+      .toString()
+      .padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now
+      .getMilliseconds()
+      .toString()
+      .padStart(4, '0')}`
+
+    const startPacket = {
+      type: 'timing',
+      userId: testRunCount.value,
+      mode: 'absolute',
+      channelNumber: 0,
+      isManual: false,
+      absoluteTime: timeString,
+      deltaTime: null,
+      status: 0,
+      originalTimeString: timeString,
+      originalChannelString: 'C0',
+    }
+
+    handlePacketReceived(startPacket)
+
+    // Schedule finish packet
+    setTimeout(() => {
+      if (!testRunning.value) return
+
+      const finishPacket = {
+        type: 'timing',
+        userId: testRunCount.value,
+        mode: 'delta',
+        channelNumber: 1,
+        isManual: false,
+        absoluteTime: null,
+        deltaTime: runTime,
+        status: 0,
+        originalTimeString: runTime.toFixed(4).padStart(10, '0'),
+        originalChannelString: 'C1',
+      }
+
+      handlePacketReceived(finishPacket)
+
+      // Schedule next run
+      scheduleNextTestRun()
+    }, runTime * 1000) // Use actual run time duration
+  }
+
+  /**
+   * Simulate a single RT test run
+   */
+  function simulateRTTestRun() {
+    const timerStore = useTimerStore()
+
+    if (timerStore.isRunning) {
+      addDebugMessage('Cannot start RT test - timer is already running')
+      return
+    }
+
+    const runTime = Math.random() * 5 + 10 // 10-15 seconds
+    addDebugMessage(`Simulating RT test run - ${runTime.toFixed(3)} seconds`)
+    performTestRun(runTime)
+  }
+
+  /**
+   * Simulate a long time test (over 1 minute)
+   */
+  function simulateLongTimeTest() {
+    const timerStore = useTimerStore()
+
+    if (timerStore.isRunning) {
+      addDebugMessage('Cannot start long time test - timer is already running')
+      return
+    }
+
+    const runTime = Math.random() * 30 + 70 // 70-100 seconds (over 1 minute)
+    addDebugMessage(`Simulating long time test run - ${runTime.toFixed(3)} seconds`)
+    performTestRun(runTime)
+  }
+
+  /**
+   * Perform a test run with given duration
+   * @param {number} runTime - Run time in seconds
+   */
+  function performTestRun(runTime) {
+    // Simulate start packet (channel 0, absolute time)
+    const now = new Date()
+    const timeString = `${now.getHours().toString().padStart(2, '0')}:${now
+      .getMinutes()
+      .toString()
+      .padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now
+      .getMilliseconds()
+      .toString()
+      .padStart(4, '0')}`
+
+    const startPacket = {
+      type: 'timing',
+      userId: 999,
+      mode: 'absolute',
+      channelNumber: 0,
+      isManual: false,
+      absoluteTime: timeString,
+      deltaTime: null,
+      status: 0,
+      originalTimeString: timeString,
+      originalChannelString: 'C0M',
+    }
+
+    handlePacketReceived(startPacket)
+
+    // Schedule finish packet
+    setTimeout(() => {
+      const finishPacket = {
+        type: 'timing',
+        userId: 999,
+        mode: 'delta',
+        channelNumber: 1,
+        isManual: Math.random() > 0.5,
+        absoluteTime: null,
+        deltaTime: runTime,
+        status: 0,
+        originalTimeString: runTime.toFixed(4),
+        originalChannelString: Math.random() > 0.5 ? 'RTM' : 'RT',
+      }
+
+      handlePacketReceived(finishPacket)
+    }, Math.min(runTime * 100, 3000)) // Speed up for testing (max 3 seconds wait)
+  }
+
+  // ============================================================================
   // CLEANUP
   // ============================================================================
 
@@ -435,6 +623,9 @@ export const useSerialStore = defineStore('serial', () => {
     rawDataBuffer,
     debugMessages,
     showDebugConsole,
+    testRunning,
+    testTimeout,
+    testRunCount,
 
     // Computed
     connectionStatus,
@@ -452,6 +643,10 @@ export const useSerialStore = defineStore('serial', () => {
     toggleDebugConsole,
     clearDebugConsole,
     addDebugMessage,
+    startTestRuns,
+    stopTestRuns,
+    simulateRTTestRun,
+    simulateLongTimeTest,
     cleanup,
   }
 })
