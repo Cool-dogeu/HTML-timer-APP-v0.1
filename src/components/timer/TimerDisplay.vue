@@ -29,7 +29,7 @@
       title="Double-click to copy"
     >
       <div class="timer-value">{{ timerStore.displayTime }}</div>
-      <div class="timer-status">{{ timerStore.timerStatus }}</div>
+      <div class="timer-status" v-if="displayStatus">{{ displayStatus }}</div>
     </div>
 
     <div class="precision-toggle">
@@ -46,7 +46,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useTimerStore } from '@stores/timer'
 import { useSettingsStore } from '@stores/settings'
 
@@ -55,6 +55,14 @@ const settingsStore = useSettingsStore()
 
 // Copy button effect state
 const copyButtonEffect = ref(null)
+
+/**
+ * Display status (hide "Clean", show everything else)
+ */
+const displayStatus = computed(() => {
+  const status = timerStore.timerStatus
+  return status === 'Clean' ? '' : status
+})
 
 /**
  * Copy latest result to clipboard

@@ -92,7 +92,8 @@ export const useTimerStore = defineStore('timer', () => {
     runningTimerInterval.value = setInterval(() => {
       if (isRunning.value && startTime.value) {
         const elapsed = (Date.now() - startTime.value) / 1000
-        displayTime.value = formatTime(elapsed, false) // Will be updated by precision setting
+        const settingsStore = useSettingsStore()
+        displayTime.value = formatTime(elapsed, settingsStore.highPrecisionTime)
       }
     }, 50) // Update every 50ms for smooth display
   }
@@ -114,7 +115,8 @@ export const useTimerStore = defineStore('timer', () => {
 
     isRunning.value = false
     finishTime.value = deltaTime
-    displayTime.value = formatTime(deltaTime, false) // Will be formatted by precision setting
+    const settingsStore = useSettingsStore()
+    displayTime.value = formatTime(deltaTime, settingsStore.highPrecisionTime)
     timerStatus.value = status === 'fault' ? 'Fault' : 'Clean'
 
     // Stop display update interval
@@ -240,7 +242,8 @@ export const useTimerStore = defineStore('timer', () => {
    */
   function resetTimer() {
     isRunning.value = false
-    displayTime.value = '0.00'
+    const settingsStore = useSettingsStore()
+    displayTime.value = settingsStore.highPrecisionTime ? '0.000' : '0.00'
     timerStatus.value = 'Ready'
     startTime.value = null
     startTimeAbsolute.value = null
