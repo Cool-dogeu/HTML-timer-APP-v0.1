@@ -420,10 +420,10 @@ export const useMledStore = defineStore('mled', () => {
   }
 
   /**
-   * Set brightness level
+   * Set brightness level and immediately update display
    * @param {number} level - Brightness level (1-3)
    */
-  function setBrightness(level) {
+  async function setBrightness(level) {
     if (level < 1 || level > 3) {
       console.warn('Invalid brightness level:', level)
       return
@@ -434,6 +434,74 @@ export const useMledStore = defineStore('mled', () => {
 
     // Persist settings
     persistSettings()
+
+    // Immediately resend current display with new brightness
+    if (isConnected.value) {
+      // Resend main line payload if it exists
+      if (lastPayload.value) {
+        console.log('Resending main line with new brightness:', level)
+        await sendFrame(line.value, level, lastPayload.value)
+      }
+
+      // Resend Data Integrator zones if active
+      if (dataEnabled.value && dataLast.value) {
+        console.log('Resending Data Integrator zones with new brightness:', level)
+
+        // Z1: Dorsal
+        if (dataLast.value.z1 && dataDorsal.value) {
+          const dorsal = dataDorsal.value.replace(/\D/g, '').slice(0, 3).padStart(3, '0')
+          const payload1 = `^cp 1 4 7^${dorsal}`
+          await sendFrame(dataLine1.value, level, payload1)
+        }
+
+        // Z2: Handler + Dog
+        if (dataLast.value.z2 && (dataHandler.value || dataDog.value)) {
+          const handler = sanitizeText(dataHandler.value)
+          const dog = sanitizeText(dataDog.value)
+
+          let payload2 = ''
+          if (handler || dog) {
+            const hl = handler.length + 1
+            const dl = dog.length
+            payload2 = `^cp 1 ${hl} 7^${handler} ^cp ${hl} ${hl + dl} 8^${dog}`
+            if (payload2.length > 64) {
+              payload2 = `^cs 7^${handler.slice(0, 58)}`
+            }
+          }
+
+          if (payload2) {
+            await sendFrame(dataLine2.value, level, payload2)
+          }
+        }
+
+        // Z3: Faults/Refusals/Elim
+        if (dataLast.value.z3) {
+          let payload3 = ''
+          const f = dataFaults.value
+          let r = dataRefusals.value
+
+          if (!Number.isInteger(r) || r < 0) r = 0
+          if (r > 3) r = 3
+
+          if (dataElim.value) {
+            payload3 = '^fd 5 1^^cp 1 10 1^  DIS^ic 3 1 2^^ic 3 1 11^'
+          } else {
+            const fd = (!f) ? '^cp 1 2 2^ F^ic 3 2^^cp 3 5 2^' : `^cp 1 3 1^ F${f} `
+            const rd = (!r) ? '^cp 4 5 2^R^ic 3 2^' : `^cp 5 9 1^R${r}`
+            payload3 = fd + rd
+          }
+
+          await sendFrame(dataLine3.value, level, payload3)
+        }
+
+        // Z4: Country
+        if (dataLast.value.z4 && dataCountry.value) {
+          const country = sanitizeText(dataCountry.value)
+          const payload4 = country ? `^cp 1 3 7^${country}` : '^cp 1 3 7^'
+          await sendFrame(dataLine4.value, level, payload4)
+        }
+      }
+    }
   }
 
   /**
@@ -541,26 +609,30 @@ export const useMledStore = defineStore('mled', () => {
   }
 
   /**
-   * Scroll step callback
+   * Scroll step callback - matches displayold/index.html implementation
    */
   async function scrollStep() {
-    if (!scrollJob.value) return
+    if (!scrollBuf.value) return
 
-    const windowText = scrollBuf.value.slice(scrollIdx.value, scrollIdx.value + 10)
+    // Rotate buffer (move first char to end)
+    scrollBuf.value = scrollBuf.value.slice(1) + scrollBuf.value[0]
 
-    // Rainbow mode
-    if (scrollRainbow.value) {
-      const nextColor = getNextRainbowColor()
-      const payload = `^cs ${nextColor}^${windowText}^cs 0^`
-      await sendFrame(line.value, brightness.value, payload)
-      previewText.value = windowText
-    } else {
-      const payload = `^cs ${scrollColor.value}^${windowText}^cs 0^`
-      await sendFrame(line.value, brightness.value, payload)
-      previewText.value = windowText
+    // Get chunk to display (as much as fits with color overhead)
+    const colorOverhead = 12
+    const maxLength = 64 - colorOverhead
+    const chunk = scrollBuf.value.slice(0, maxLength)
+
+    // Update rainbow color if needed
+    scrollIdx.value = (scrollIdx.value + 1) % scrollLen.value
+    if (scrollRainbow.value && scrollIdx.value === 0) {
+      scrollColor.value = getNextRainbowColor()
     }
 
-    scrollIdx.value = (scrollIdx.value + 1) % scrollLen.value
+    // Send to display
+    await sendTextOnce(chunk, scrollColor.value)
+
+    // Schedule next step
+    console.log('scrollStep: using delay =', scrollDelay.value, 'ms')
     scrollJob.value = setTimeout(() => scrollStep(), scrollDelay.value)
   }
 
@@ -590,6 +662,8 @@ export const useMledStore = defineStore('mled', () => {
     const delays = { 1: 550, 2: 350, 3: 220 }
     scrollDelay.value = delays[speed] || 550
 
+    console.log('startScroll: scrollSpeed.value =', scrollSpeed.value, ', parsed speed =', speed, ', delay =', scrollDelay.value, 'ms')
+
     scrollColor.value = colorCode
     scrollLen.value = scrollBuf.value.length
     scrollIdx.value = 0
@@ -597,10 +671,12 @@ export const useMledStore = defineStore('mled', () => {
 
     // If speed 0, just send once without scrolling
     if (speed === 0) {
+      console.log('startScroll: speed is 0, sending text once without scrolling')
       await sendTextOnce(truncated, colorCode)
       return
     }
 
+    console.log('startScroll: starting scroll animation')
     activeLabel.value = 'Scrolling'
     scrollStep()
   }
@@ -613,6 +689,7 @@ export const useMledStore = defineStore('mled', () => {
       clearTimeout(scrollJob.value)
       scrollJob.value = null
     }
+    scrollBuf.value = '' // Clear buffer to stop scrollStep guard check
   }
 
   /**

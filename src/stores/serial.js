@@ -107,6 +107,10 @@ export const useSerialStore = defineStore('serial', () => {
       timerDeviceInfo.value = getDeviceInfo(port)
       timerPort.value = port
 
+      // Save device info to localStorage for auto-reconnect
+      localStorage.setItem('timerDeviceInfo', JSON.stringify(timerDeviceInfo.value))
+      console.log('Saved timer device info:', timerDeviceInfo.value)
+
       // Create manager instance
       serialManager.value = new SerialManager()
 
@@ -203,6 +207,9 @@ export const useSerialStore = defineStore('serial', () => {
     serialManager.value = null
     usbManager.value = null
 
+    // Remove saved device info
+    localStorage.removeItem('timerDeviceInfo')
+
     console.log('Disconnected')
   }
 
@@ -243,31 +250,50 @@ export const useSerialStore = defineStore('serial', () => {
     try {
       // Get previously authorized ports
       const ports = await navigator.serial.getPorts()
-      if (ports.length > 0) {
-        console.log('Found authorized ports, attempting auto-reconnect...')
-        const port = ports[0]
-
-        serialManager.value = new SerialManager()
-        serialManager.value.onConnectionChange = handleConnectionChange
-        serialManager.value.onPacketReceived = handlePacketReceived
-        serialManager.value.onRawDataReceived = handleRawDataReceived
-
-        await serialManager.value.connect(port)
-
-        selectedPort.value = port
-        lastConnectedPort.value = port
-        timerPort.value = port
-        timerDeviceInfo.value = getDeviceInfo(port)
-        isConnected.value = true
-        manualDisconnect.value = false
-
-        startConnectionMonitoring()
-
-        console.log('Auto-reconnected successfully')
-        return true
+      if (ports.length === 0) {
+        return false
       }
+
+      // Load saved device info
+      const savedDeviceInfo = localStorage.getItem('timerDeviceInfo')
+      if (!savedDeviceInfo) {
+        console.log('No saved timer device info found')
+        return false
+      }
+
+      const savedInfo = JSON.parse(savedDeviceInfo)
+      console.log('Looking for timer device:', savedInfo)
+
+      // Find matching port
+      for (const p of ports) {
+        const info = getDeviceInfo(p)
+        if (info.vendorId === savedInfo.vendorId && info.productId === savedInfo.productId) {
+          console.log('Found timer device, attempting auto-reconnect...')
+
+          serialManager.value = new SerialManager()
+          serialManager.value.onConnectionChange = handleConnectionChange
+          serialManager.value.onPacketReceived = handlePacketReceived
+          serialManager.value.onRawDataReceived = handleRawDataReceived
+
+          await serialManager.value.connect(p)
+
+          selectedPort.value = p
+          lastConnectedPort.value = p
+          timerPort.value = p
+          timerDeviceInfo.value = info
+          isConnected.value = true
+          manualDisconnect.value = false
+
+          startConnectionMonitoring()
+
+          console.log('Timer auto-reconnected successfully')
+          return true
+        }
+      }
+
+      console.log('Timer device not found among authorized ports')
     } catch (error) {
-      console.error('Auto-reconnect failed:', error)
+      console.error('Timer auto-reconnect failed:', error)
     }
 
     return false
