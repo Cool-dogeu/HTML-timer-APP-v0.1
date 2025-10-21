@@ -1,9 +1,15 @@
 [build]
-  publish = "."
-  command = "sed -i 's/__COMMIT_REF__/'\"$COMMIT_REF\"'/g' sw.js || echo 'Build completed'"
+  publish = "dist"
+  command = "npm run build"
 
 [build.environment]
   NODE_VERSION = "18"
+
+[[redirects]]
+  from = "/api/ring-jumbotron"
+  to = "https://www.smarteragilitysecretary.com/api/ring-jumbotron"
+  status = 200
+  force = true
 
 [[redirects]]
   from = "/xml/:competition"
@@ -19,7 +25,7 @@
 
 [[redirects]]
   from = "/*"
-  to = "/timer.html"
+  to = "/index.html"
   status = 200
 
 [[headers]]
