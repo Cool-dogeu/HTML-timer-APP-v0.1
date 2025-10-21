@@ -11,17 +11,6 @@
         Refresh
       </button>
 
-      <div class="status-group">
-        <div class="status-item">
-          <span class="status-led" :class="timerStatusClass"></span>
-          <span>Timer: {{ serialStore.connectionStatus }}</span>
-        </div>
-        <div class="status-item">
-          <span class="status-led" :class="mledStatusClass"></span>
-          <span>Display: {{ mledStore.connectionStatus }}</span>
-        </div>
-      </div>
-
       <span v-if="!settingsStore.isOnline" class="offline-indicator">
         <i class="material-icons">cloud_off</i>
         OFFLINE

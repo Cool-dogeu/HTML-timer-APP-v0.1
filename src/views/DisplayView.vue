@@ -1,12 +1,14 @@
 <template>
-  <div class="mled-container">
-    <MledStickyControls />
-    <MledTextModule />
-    <MledCoursewalksModule />
-    <MledCountdownModule />
-    <MledLinkModule />
-    <MledDataModule />
-  </div>
+  <main class="main-container">
+    <div class="mled-container">
+      <MledStickyControls />
+      <MledTextModule />
+      <MledCoursewalksModule />
+      <MledCountdownModule />
+      <MledLinkModule />
+      <MledDataModule />
+    </div>
+  </main>
 </template>
 
 <script setup>

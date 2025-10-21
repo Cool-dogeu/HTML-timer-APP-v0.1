@@ -1,10 +1,10 @@
 <template>
-  <div class="mled-module" :class="{ disabled: !mledStore.link.enabled }">
+  <div class="mled-module" :class="{ disabled: !mledStore.linkEnabled }">
     <div class="module-toggle">
       <label>
         <input
           type="checkbox"
-          v-model="mledStore.link.enabled"
+          v-model="mledStore.linkEnabled"
           :disabled="!mledStore.isConnected"
         />
         Enable
@@ -15,7 +15,7 @@
     <div style="padding: 1rem;">
       <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
         <label class="module-label">Color</label>
-        <select v-model="mledStore.link.color" class="mled-select" :disabled="!mledStore.link.enabled">
+        <select v-model="mledStore.linkColor" class="mled-select" :disabled="!mledStore.linkEnabled">
           <option value="Red">Red</option>
           <option value="Green">Green</option>
           <option value="Blue">Blue</option>
@@ -28,7 +28,7 @@
           <option value="Light Blue">Light Blue</option>
         </select>
         <label class="module-label" style="margin-left: 1rem;">Hold</label>
-        <select v-model.number="mledStore.link.hold" class="mled-select" :disabled="!mledStore.link.enabled">
+        <select v-model.number="mledStore.linkHold" class="mled-select" :disabled="!mledStore.linkEnabled">
           <option :value="1">1 s</option>
           <option :value="3">3 s</option>
           <option :value="5">5 s</option>
@@ -43,7 +43,7 @@
       <div class="module-section-container">
         <label class="module-section-label">Status:</label>
         <div class="module-section-text">
-          {{ mledStore.link.status }}
+          {{ mledStore.linkStatus }}
         </div>
       </div>
     </div>

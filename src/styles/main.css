@@ -455,6 +455,67 @@ body.dark-mode .results-table tbody tr.selected {
     background: #2c5282;
 }
 
+/* Dark mode - Modal fixes */
+body.dark-mode .settings-section {
+    border-bottom: 1px solid var(--border-color);
+}
+
+body.dark-mode .settings-section h3 {
+    color: var(--text-primary);
+}
+
+body.dark-mode .api-settings {
+    background: var(--bg-tertiary);
+}
+
+body.dark-mode .form-help {
+    color: var(--text-secondary);
+}
+
+body.dark-mode .confirmation-modal p {
+    color: var(--text-secondary);
+}
+
+body.dark-mode .info-modal h1 {
+    color: var(--text-primary);
+}
+
+body.dark-mode .info-modal h2 {
+    color: var(--text-primary);
+}
+
+body.dark-mode .info-modal code {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+body.dark-mode .important-notice {
+    background: #3a3a1f;
+    border-color: #5a5a2f;
+    color: var(--text-primary);
+}
+
+body.dark-mode .integration-section {
+    background: var(--bg-tertiary);
+    border-left-color: #4a8fc7;
+}
+
+body.dark-mode .form-group select.form-control {
+    background: var(--bg-tertiary);
+}
+
+body.dark-mode .api-test-result.success {
+    background: #1a3d1a;
+    color: #81c784;
+    border-color: #2e7d32;
+}
+
+body.dark-mode .api-test-result.error {
+    background: #3d1a1a;
+    color: #ef9a9a;
+    border-color: #c62828;
+}
+
 .result-clean {
     color: #4caf50;
     font-weight: 500;

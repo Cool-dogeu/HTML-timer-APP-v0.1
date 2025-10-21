@@ -420,6 +420,23 @@ export const useMledStore = defineStore('mled', () => {
   }
 
   /**
+   * Set brightness level
+   * @param {number} level - Brightness level (1-3)
+   */
+  function setBrightness(level) {
+    if (level < 1 || level > 3) {
+      console.warn('Invalid brightness level:', level)
+      return
+    }
+
+    brightness.value = level
+    console.log('MLED brightness set to:', level)
+
+    // Persist settings
+    persistSettings()
+  }
+
+  /**
    * Clear MLED display
    */
   async function clear() {
@@ -1055,41 +1072,75 @@ export const useMledStore = defineStore('mled', () => {
       }
 
       const json = await response.json()
+      console.log('Fetched raw JSON:', json)
 
-      if (json && json.currentRunResult) {
-        const obj = json.currentRunResult
+      // The API returns currentRunResult and currentRun (SAS_reader.py lines 74-96)
+      const currentRunResult = (json && json.currentRunResult) ? json.currentRunResult : {}
+      const currentRun = (json && json.currentRun) ? json.currentRun : {}
 
-        // Parse data fields
+      // Check running flag - determines which object to use
+      const runningFlag = String(currentRunResult.running || '0').trim() === '1' ||
+                          currentRunResult.running === true ||
+                          currentRunResult.running === 1
+
+      console.log('Running flag:', runningFlag)
+
+      let obj
+      if (runningFlag && currentRunResult && Object.keys(currentRunResult).length > 0) {
+        // RUNNING - use currentRunResult (SAS_reader.py lines 80-87)
+        obj = currentRunResult
+        console.log('Using currentRunResult (running):', obj)
+
         dataDorsal.value = (obj.dorsal || '').toString()
         dataHandler.value = (obj.handler || '').toString()
-        dataDog.value = (obj.dog_call_name || obj.dog_name || obj.dog_short || obj.dog || '').toString()
+        dataDog.value = (obj.dog_call_name || obj.dog || '').toString()
         dataCountry.value = (obj.country || '').toString()
 
-        // Parse numeric fields
-        dataFaults.value = Number.isFinite(obj.faults) ? obj.faults : (obj.faults == null ? 0 : Number(obj.faults) || 0)
+        // Use 'faults' or 'course_faults' from API
+        dataFaults.value = Number.isFinite(obj.faults) ? obj.faults :
+                           Number.isFinite(obj.course_faults) ? obj.course_faults :
+                           (obj.faults == null ? 0 : Number(obj.faults) || 0)
         dataRefusals.value = Number.isFinite(obj.refusals) ? obj.refusals : (obj.refusals == null ? 0 : Number(obj.refusals) || 0)
 
-        // Parse eliminated flag
-        dataElim.value = !!(obj.is_eliminated === true || obj.is_eliminated === 1 || obj.is_eliminated === '1')
+        // Use 'is_eliminated' from API
+        dataElim.value = !!(obj.is_eliminated === true || obj.is_eliminated === 1 || String(obj.is_eliminated).trim() === '1')
+      } else if (currentRun && Object.keys(currentRun).length > 0) {
+        // NOT RUNNING - use currentRun (SAS_reader.py lines 89-96)
+        obj = currentRun
+        console.log('Using currentRun (not running):', obj)
 
-        console.log('Parsed data:', {
-          dorsal: dataDorsal.value,
-          handler: dataHandler.value,
-          dog: dataDog.value,
-          country: dataCountry.value,
-          faults: dataFaults.value,
-          refusals: dataRefusals.value,
-          elim: dataElim.value
-        })
+        dataDorsal.value = (obj.dorsal || '').toString()
+        dataHandler.value = (obj.handler || '').toString()
+        dataDog.value = (obj.dog || '').toString()
+        dataCountry.value = (obj.country_name || obj.country || '').toString()
 
-        // Auto-send if changed
-        await autoSendDataIfChanged()
-
-        const ts = new Date().toLocaleTimeString()
-        dataStatus.value = `OK ${ts} - Dorsal: ${dataDorsal.value} F:${dataFaults.value} R:${dataRefusals.value} E:${dataElim.value}`
+        // No faults/refusals/elimination when not running
+        dataFaults.value = 0
+        dataRefusals.value = 0
+        dataElim.value = false
       } else {
-        dataStatus.value = 'No currentRunResult data found in JSON'
+        dataStatus.value = 'No currentRunResult or currentRun found in JSON'
+        console.warn('No valid data found in JSON:', json)
+        return
       }
+
+      console.log('Parsed data:', {
+        source: runningFlag ? 'currentRunResult' : 'currentRun',
+        dorsal: dataDorsal.value,
+        handler: dataHandler.value,
+        dog: dataDog.value,
+        country: dataCountry.value,
+        faults: dataFaults.value,
+        refusals: dataRefusals.value,
+        elim: dataElim.value
+      })
+
+      // Auto-send if changed
+      await autoSendDataIfChanged()
+
+      const ts = new Date().toLocaleTimeString()
+      const source = runningFlag ? 'Running' : 'Waiting'
+      dataStatus.value = `OK ${ts} [${source}] - ${dataHandler.value} / ${dataDog.value} - F:${dataFaults.value} R:${dataRefusals.value}`
     } catch (error) {
       console.error('JSON fetch error:', error)
       dataStatus.value = `Error: ${error.message}`
@@ -1104,11 +1155,38 @@ export const useMledStore = defineStore('mled', () => {
 
     // Build current zone strings
     const z1 = dataDorsal.value ? dataDorsal.value.replace(/\D/g, '').slice(0, 3).padStart(3, '0') : ''
+
+    // Z2: handler + dog with exact format matching displayold/index.html
     const z2Handler = sanitizeText(dataHandler.value)
     const z2Dog = sanitizeText(dataDog.value)
-    const z2 = z2Handler || z2Dog ? `${z2Handler}${z2Handler && z2Dog ? ' / ' : ''}${z2Dog}` : ''
-    const z3 = dataElim.value ? 'ELIM' : `F:${dataFaults.value} R:${Math.min(3, Math.max(0, dataRefusals.value))}`
-    const z4 = dataCountry.value ? sanitizeText(dataCountry.value) : ''
+    let z2 = ''
+    if (z2Handler || z2Dog) {
+      const hl = z2Handler.length + 1
+      const dl = z2Dog.length
+      z2 = `^cp 1 ${hl} 7^${z2Handler} ^cp ${hl} ${hl + dl} 8^${z2Dog}`
+      if (z2.length > 64) {
+        z2 = `^cs 7^${z2Handler.slice(0, 58)}`
+      }
+    }
+
+    // Z3: faults/refusals/elimination with exact format matching displayold/index.html
+    const f = dataFaults.value
+    let r = dataRefusals.value
+    if (!Number.isInteger(r) || r < 0) r = 0
+    if (r > 3) r = 3
+
+    let z3 = ''
+    if (dataElim.value) {
+      z3 = '^fd 5 1^^cp 1 10 1^  DIS^ic 3 1 2^^ic 3 1 11^'
+    } else {
+      const fd = (!f) ? '^cp 1 2 2^ F^ic 3 2^^cp 3 5 2^' : `^cp 1 3 1^ F${f} `
+      const rd = (!r) ? '^cp 4 5 2^R^ic 3 2^' : `^cp 5 9 1^R${r}`
+      z3 = fd + rd
+    }
+
+    // Z4: country with exact format matching displayold/index.html
+    const z4Country = sanitizeText(dataCountry.value)
+    const z4 = z4Country ? `^cp 1 3 7^${z4Country}` : '^cp 1 3 7^'
 
     // Check if changed
     const changed = z1 !== dataLast.value.z1 ||
@@ -1130,34 +1208,59 @@ export const useMledStore = defineStore('mled', () => {
     if (z2 && (dataHandler.value || dataDog.value)) {
       const handler = sanitizeText(dataHandler.value)
       const dog = sanitizeText(dataDog.value)
-      let combined = handler || dog
-      if (handler && dog) {
-        combined = `${handler} / ${dog}`
+
+      let payload2 = ''
+      if (handler || dog) {
+        const hl = handler.length + 1
+        const dl = dog.length
+        // Format: handler in color 7 (white), dog in color 8 (orange)
+        payload2 = `^cp 1 ${hl} 7^${handler} ^cp ${hl} ${hl + dl} 8^${dog}`
+
+        // If too long, just show handler truncated
+        if (payload2.length > 64) {
+          payload2 = `^cs 7^${handler.slice(0, 58)}`
+        }
       }
-      if (combined.length <= 9) {
-        const payload2 = `^cp 1 4 7^${combined}`
+
+      // Clear line first, then send payload
+      await sendFrame(dataLine2.value, brightness.value, '')
+      if (payload2) {
         await sendFrame(dataLine2.value, brightness.value, payload2)
       }
     }
 
     if (z3) {
       let payload3 = ''
-      if (dataElim.value) {
-        payload3 = '^cp 1 1 1^ELIM'
-      } else {
-        const f = dataFaults.value
-        const r = Math.min(3, Math.max(0, dataRefusals.value))
-        payload3 = `^cp 1 4 7^F:${f} R:${r}`
+      const f = dataFaults.value
+      let r = dataRefusals.value
+
+      if (!Number.isInteger(r) || r < 0) r = 0
+      if (r > 3) {
+        r = 3
+        dataRefusals.value = 3
       }
+
+      if (dataElim.value) {
+        // When eliminated, show "DIS" with special formatting
+        payload3 = '^fd 5 1^^cp 1 10 1^  DIS^ic 3 1 2^^ic 3 1 11^'
+      } else {
+        // Format: F in color 2 (green) if 0, color 1 (red) if faults
+        //         R in color 2 (green) if 0, color 1 (red) if refusals
+        const fd = (!f) ? '^cp 1 2 2^ F^ic 3 2^^cp 3 5 2^' : `^cp 1 3 1^ F${f} `
+        const rd = (!r) ? '^cp 4 5 2^R^ic 3 2^' : `^cp 5 9 1^R${r}`
+        payload3 = fd + rd
+      }
+
       await sendFrame(dataLine3.value, brightness.value, payload3)
     }
 
     if (z4 && dataCountry.value) {
       const country = sanitizeText(dataCountry.value)
-      if (country.length <= 9) {
-        const payload4 = `^cp 1 4 7^${country}`
-        await sendFrame(dataLine4.value, brightness.value, payload4)
-      }
+
+      // Clear line first, then send payload (matches displayold/index.html)
+      await sendFrame(dataLine4.value, brightness.value, '')
+      const payload4 = country ? `^cp 1 3 7^${country}` : '^cp 1 3 7^'
+      await sendFrame(dataLine4.value, brightness.value, payload4)
     }
 
     // Update last sent
@@ -1310,7 +1413,7 @@ export const useMledStore = defineStore('mled', () => {
   })
 
   // Auto-save settings watchers
-  watch([brightness, scrollSpeed, dataUrl], () => {
+  watch([brightness, scrollSpeed, textColor, dataUrl], () => {
     if (!isInitializing.value) {
       persistSettings()
     }
@@ -1423,6 +1526,7 @@ export const useMledStore = defineStore('mled', () => {
 
     // Actions - Display
     sendFrame,
+    setBrightness,
     clear,
 
     // Actions - Text Module

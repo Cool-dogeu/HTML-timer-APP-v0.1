@@ -1,42 +1,51 @@
 <template>
-  <div id="app" v-cloak :class="{ 'dark-mode': isDarkMode }">
+  <div id="app" v-cloak :class="{ 'dark-mode': settingsStore.isDarkMode }">
     <AppHeader />
     <div class="app-content-wrapper">
-      <TabNav />
-      <router-view />
+      <TabNavigation />
+      <router-view></router-view>
     </div>
-    <DebugConsole v-if="showDebugConsole" />
-    <DebugToggle @toggle="showDebugConsole = !showDebugConsole" :active="showDebugConsole" />
+    <DebugConsole v-if="serialStore.showDebugConsole" />
+    <DebugToggle />
+
+    <!-- Modals -->
+    <SettingsModal v-if="settingsStore.showSettings" />
+    <InfoModal v-if="settingsStore.showInfo" />
+    <CompactTimerModal v-if="settingsStore.showCompactTimer" />
+    <ClearConfirmationModal v-if="settingsStore.showClearConfirmation" />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { onMounted } from 'vue'
+import { useSettingsStore } from '@stores/settings'
+import { useSerialStore } from '@stores/serial'
+import { useMledStore } from '@stores/mled'
+import { useHdmiStore } from '@stores/hdmi'
 import AppHeader from '@components/common/AppHeader.vue'
-import TabNav from '@components/common/TabNav.vue'
-import DebugConsole from '@components/debug/DebugConsole.vue'
-import DebugToggle from '@components/debug/DebugToggle.vue'
+import TabNavigation from '@components/common/TabNavigation.vue'
+import DebugConsole from '@components/common/DebugConsole.vue'
+import DebugToggle from '@components/common/DebugToggle.vue'
+import SettingsModal from '@/components/modals/SettingsModal.vue'
+import InfoModal from '@/components/modals/InfoModal.vue'
+import CompactTimerModal from '@/components/modals/CompactTimerModal.vue'
+import ClearConfirmationModal from '@/components/modals/ClearConfirmationModal.vue'
 
-// Theme management
-const isDarkMode = ref(false)
-const showDebugConsole = ref(false)
+const settingsStore = useSettingsStore()
+const serialStore = useSerialStore()
+const mledStore = useMledStore()
+const hdmiStore = useHdmiStore()
 
-// Load theme from localStorage
+// Initialize all stores
 onMounted(() => {
-  const savedTheme = localStorage.getItem('theme')
-  if (savedTheme === 'dark') {
-    isDarkMode.value = true
-  }
+  settingsStore.initialize()
+  mledStore.initialize()
+  hdmiStore.initialize()
+
+  // Auto-reconnect to previously authorized devices
+  serialStore.autoReconnect()
+  mledStore.autoReconnect()
 })
-
-// Watch for theme changes
-function toggleTheme() {
-  isDarkMode.value = !isDarkMode.value
-  localStorage.setItem('theme', isDarkMode.value ? 'dark' : 'light')
-}
-
-// Expose to window for child components
-window.__toggleTheme = toggleTheme
 </script>
 
 <style>

@@ -33,7 +33,7 @@
 import { ref } from 'vue'
 import { useTimerStore } from '@stores/timer'
 import { useSettingsStore } from '@stores/settings'
-import { CsvExporter } from '@services/export/CsvExporter'
+import { resultsToCSVString } from '@services/formatters/CsvExporter'
 
 const timerStore = useTimerStore()
 const settingsStore = useSettingsStore()
@@ -46,8 +46,7 @@ const jsonFileHandle = ref(null)
  */
 async function exportResults() {
   try {
-    const exporter = new CsvExporter()
-    const csv = exporter.exportToCSV(timerStore.results)
+    const csv = resultsToCSVString(timerStore.results)
 
     // Create download link
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })

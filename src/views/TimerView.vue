@@ -1,10 +1,14 @@
 <template>
   <main class="main-container">
     <div class="timer-content-wrapper">
-      <TimerDisplay />
-      <ConnectionControls />
+      <!-- Left column: Timer and connection controls -->
+      <div class="timer-section">
+        <TimerDisplay />
+        <ConnectionControls />
+      </div>
+
+      <!-- Right column: Results history -->
       <ResultsHistory />
-      <ResultsActions />
     </div>
   </main>
 </template>
@@ -13,7 +17,6 @@
 import TimerDisplay from '@/components/timer/TimerDisplay.vue'
 import ConnectionControls from '@/components/timer/ConnectionControls.vue'
 import ResultsHistory from '@/components/timer/ResultsHistory.vue'
-import ResultsActions from '@/components/timer/ResultsActions.vue'
 </script>
 
 <style scoped>

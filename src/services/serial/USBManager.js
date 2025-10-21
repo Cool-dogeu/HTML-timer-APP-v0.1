@@ -245,6 +245,31 @@ export class USBManager {
   }
 
   /**
+   * Check if connection is still active
+   * @returns {boolean} Connection status
+   */
+  async checkConnection() {
+    if (!this.device) {
+      return false
+    }
+
+    try {
+      // Check if device is still opened
+      if (!this.device.opened) {
+        console.log('USB device is no longer opened')
+        await this.handleDisconnection()
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.log('USB connection check failed:', error)
+      await this.handleDisconnection()
+      return false
+    }
+  }
+
+  /**
    * Handle unexpected disconnection
    */
   async handleDisconnection() {

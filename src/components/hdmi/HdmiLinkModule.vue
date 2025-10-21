@@ -1,8 +1,8 @@
 <template>
-  <div class="mled-module" :class="{ disabled: !hdmiStore.link.enabled }">
+  <div class="mled-module" :class="{ disabled: !hdmiStore.linkEnabled }">
     <div class="module-toggle">
       <label>
-        <input type="checkbox" v-model="hdmiStore.link.enabled" />
+        <input type="checkbox" v-model="hdmiStore.linkEnabled" />
         Enable
       </label>
     </div>
@@ -11,7 +11,7 @@
     <div style="padding: 1rem;">
       <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
         <label class="module-label">Hold</label>
-        <select v-model.number="hdmiStore.link.hold" class="mled-select" :disabled="!hdmiStore.link.enabled">
+        <select v-model.number="hdmiStore.linkHold" class="mled-select" :disabled="!hdmiStore.linkEnabled">
           <option :value="1">1 s</option>
           <option :value="3">3 s</option>
           <option :value="5">5 s</option>
@@ -26,7 +26,7 @@
       <div class="module-section-container">
         <label class="module-section-label">Status:</label>
         <div class="module-section-text">
-          {{ hdmiStore.link.status }}
+          {{ hdmiStore.linkStatus }}
         </div>
       </div>
     </div>

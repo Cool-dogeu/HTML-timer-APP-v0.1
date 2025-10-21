@@ -1,10 +1,10 @@
 <template>
-  <div class="mled-module" :class="{ disabled: !mledStore.coursewalks.enabled }">
+  <div class="mled-module" :class="{ disabled: !mledStore.cwEnabled }">
     <div class="module-toggle">
       <label>
         <input
           type="checkbox"
-          v-model="mledStore.coursewalks.enabled"
+          v-model="mledStore.cwEnabled"
           :disabled="!mledStore.isConnected"
         />
         Enable
@@ -16,7 +16,7 @@
       <!-- Settings row -->
       <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
         <label class="module-label">Version</label>
-        <select v-model="mledStore.coursewalks.version" class="mled-select" :disabled="!mledStore.coursewalks.enabled">
+        <select v-model="mledStore.cwVersion" class="mled-select" :disabled="!mledStore.cwEnabled">
           <option value="1">CW1</option>
           <option value="2">CW2</option>
           <option value="3">CW3</option>
@@ -24,7 +24,7 @@
         </select>
 
         <label class="module-label" style="margin-left: 1rem;">Duration</label>
-        <select v-model="mledStore.coursewalks.duration" class="mled-select" :disabled="!mledStore.coursewalks.enabled">
+        <select v-model="mledStore.cwDuration" class="mled-select" :disabled="!mledStore.cwEnabled">
           <option value="7">7 min</option>
           <option value="8">8 min</option>
           <option value="9">9 min</option>
@@ -32,7 +32,7 @@
         </select>
 
         <label class="module-label" style="margin-left: 1rem;">Wait</label>
-        <select v-model="mledStore.coursewalks.wait" class="mled-select" :disabled="!mledStore.coursewalks.enabled">
+        <select v-model="mledStore.cwWait" class="mled-select" :disabled="!mledStore.cwEnabled">
           <option value="10">10 s</option>
           <option value="20">20 s</option>
           <option value="30">30 s</option>
@@ -41,7 +41,7 @@
 
       <!-- Buttons row -->
       <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-        <button @click="mledStore.startCoursewalk" class="btn btn-primary" :disabled="!mledStore.coursewalks.enabled">Start</button>
+        <button @click="mledStore.startCoursewalk" class="btn btn-primary" :disabled="!mledStore.cwEnabled">Start</button>
       </div>
     </div>
   </div>

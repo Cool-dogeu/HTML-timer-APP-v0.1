@@ -5,7 +5,6 @@
 
 import { createRouter, createWebHistory } from 'vue-router'
 import TimerView from '@/views/TimerView.vue'
-import ResultsView from '@/views/ResultsView.vue'
 import DisplayView from '@/views/DisplayView.vue'
 import HdmiView from '@/views/HdmiView.vue'
 
@@ -20,21 +19,12 @@ const routes = [
     }
   },
   {
-    path: '/results',
-    name: 'results',
-    component: ResultsView,
-    meta: {
-      title: 'Results',
-      icon: 'list'
-    }
-  },
-  {
     path: '/display',
     name: 'display',
     component: DisplayView,
     meta: {
-      title: 'Display',
-      icon: 'display_settings'
+      title: 'FDS Display',
+      icon: 'tv'
     }
   },
   {
@@ -42,8 +32,8 @@ const routes = [
     name: 'hdmi',
     component: HdmiView,
     meta: {
-      title: 'HDMI',
-      icon: 'tv'
+      title: 'HDMI Display',
+      icon: 'cast'
     }
   }
 ]

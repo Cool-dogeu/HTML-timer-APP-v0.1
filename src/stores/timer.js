@@ -4,10 +4,12 @@
  */
 
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { formatTime, getCurrentTimestamp } from '@services/formatters/TimeFormatter'
 import { saveResults, loadResults, clearResults as clearStoredResults } from '@services/storage/LocalStorageService'
 import { useSettingsStore } from './settings'
+import { useMledStore } from './mled'
+import { useHdmiStore } from './hdmi'
 
 export const useTimerStore = defineStore('timer', () => {
   // ============================================================================
@@ -313,6 +315,23 @@ export const useTimerStore = defineStore('timer', () => {
       clearTimeout(copyButtonTimeout.value)
     }
   }
+
+  // ============================================================================
+  // WATCHERS - Timer Link Integration
+  // ============================================================================
+
+  /**
+   * Watch timer state and route to MLED and HDMI displays
+   */
+  watch([displayTime, isRunning], ([time, running]) => {
+    const mledStore = useMledStore()
+    const hdmiStore = useHdmiStore()
+    const state = running ? 'running' : 'finished'
+
+    // Route to both display types
+    mledStore.routeTimerToDisplay(time, state)
+    hdmiStore.routeTimerToDisplay(time, state)
+  })
 
   // ============================================================================
   // RETURN PUBLIC API

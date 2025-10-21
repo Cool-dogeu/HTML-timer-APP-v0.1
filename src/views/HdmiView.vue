@@ -1,11 +1,13 @@
 <template>
-  <div class="mled-container">
-    <HdmiStickyControls />
-    <HdmiTextModule />
-    <HdmiCoursewalksModule />
-    <HdmiCountdownModule />
-    <HdmiLinkModule />
-  </div>
+  <main class="main-container">
+    <div class="mled-container">
+      <HdmiStickyControls />
+      <HdmiTextModule />
+      <HdmiCoursewalksModule />
+      <HdmiCountdownModule />
+      <HdmiLinkModule />
+    </div>
+  </main>
 </template>
 
 <script setup>

@@ -141,12 +141,9 @@ export const useSerialStore = defineStore('serial', () => {
     }
 
     try {
-      // Request device from user
+      // Request device from user (empty filters shows all USB devices)
       const device = await navigator.usb.requestDevice({
-        filters: [
-          { vendorId: 0x10c4 }, // Silicon Labs (ALGE/FDS)
-          { vendorId: 0x0403 }, // FTDI (TIMY)
-        ]
+        filters: []
       })
 
       selectedDevice.value = device
@@ -312,7 +309,7 @@ export const useSerialStore = defineStore('serial', () => {
       }
       // Channel 1 with delta time = finish signal
       else if (packet.channelNumber === 1 && packet.mode === 'delta') {
-        const status = packet.status === 0 ? 'clean' : 'fault'
+        const status = packet.deltaTime > 0 ? 'clean' : 'fault'
         timerStore.stopTimer(packet.deltaTime, status, packet.userId)
       }
     }
