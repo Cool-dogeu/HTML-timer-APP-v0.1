@@ -80,7 +80,7 @@ export const useMledStore = defineStore('mled', () => {
   const linkToMled = ref(true)
   const linkLine = ref(7)
   const linkColor = ref('Green')
-  const linkHold = ref(10) // Hold time in seconds after timer stops
+  const linkHold = ref(7) // Hold time in seconds after timer stops
   const linkStatus = ref('Waiting for timer data...')
   const linkLastUpdate = ref(0)
   const linkClearTimer = ref(null)

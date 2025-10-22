@@ -60,7 +60,7 @@ export const useHdmiStore = defineStore('hdmi', () => {
   // Timer LINK module
   const linkEnabled = ref(false)
   const linkColor = ref('Green')
-  const linkHold = ref(10) // Hold time in seconds after timer stops
+  const linkHold = ref(7) // Hold time in seconds after timer stops
   const linkStatus = ref('Waiting for timer data...')
   const linkClearTimer = ref(null)
 

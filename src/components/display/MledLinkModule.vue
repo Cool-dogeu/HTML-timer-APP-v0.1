@@ -32,6 +32,10 @@
           <option :value="1">1 s</option>
           <option :value="3">3 s</option>
           <option :value="5">5 s</option>
+          <option :value="6">6 s</option>
+          <option :value="7">7 s</option>
+          <option :value="8">8 s</option>
+          <option :value="9">9 s</option>
           <option :value="10">10 s</option>
           <option :value="15">15 s</option>
           <option :value="20">20 s</option>
