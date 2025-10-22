@@ -18,7 +18,7 @@
       </button>
 
       <div class="mled-sticky-right-controls">
-        <button @click="clearDisplay" class="btn btn-secondary" :disabled="!algeStore.isConnected">
+        <button @click="clearDisplay" class="btn btn-warning" :disabled="!algeStore.isConnected">
           <i class="material-icons">clear_all</i>
           Clear
         </button>

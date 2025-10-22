@@ -27,7 +27,7 @@
             <button @click="mledStore.setBrightness(3)" type="button">3</button>
           </div>
         </div>
-        <button @click="mledStore.clear" class="btn btn-secondary">
+        <button @click="mledStore.clear" class="btn btn-warning">
           <i class="material-icons">clear_all</i>
           Clear
         </button>

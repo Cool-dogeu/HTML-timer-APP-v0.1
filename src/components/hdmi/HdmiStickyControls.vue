@@ -41,7 +41,7 @@
           <i class="material-icons">fullscreen</i>
           Fullscreen
         </button>
-        <button @click="hdmiStore.clear" class="btn btn-secondary">
+        <button @click="hdmiStore.clear" class="btn btn-warning">
           <i class="material-icons">clear_all</i>
           Clear
         </button>
