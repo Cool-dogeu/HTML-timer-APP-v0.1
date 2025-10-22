@@ -27,10 +27,12 @@ import { computed } from 'vue'
 import { useSerialStore } from '@stores/serial'
 import { useMledStore } from '@stores/mled'
 import { useHdmiStore } from '@stores/hdmi'
+import { useAlgeStore } from '@stores/alge'
 
 const serialStore = useSerialStore()
 const mledStore = useMledStore()
 const hdmiStore = useHdmiStore()
+const algeStore = useAlgeStore()
 
 // Define tabs with their routes, labels, icons, and status
 const tabs = computed(() => [
@@ -51,6 +53,12 @@ const tabs = computed(() => [
     label: 'HDMI Display',
     icon: 'cast',
     statusClass: hdmiStore.isWindowOpen ? 'status-ok' : 'status-error'
+  },
+  {
+    name: 'alge',
+    label: 'Alge Display',
+    icon: 'display_settings',
+    statusClass: algeStore.isConnected ? 'status-ok' : 'status-error'
   }
 ])
 </script>

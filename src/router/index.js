@@ -7,6 +7,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import TimerView from '@/views/TimerView.vue'
 import DisplayView from '@/views/DisplayView.vue'
 import HdmiView from '@/views/HdmiView.vue'
+import AlgeView from '@/views/AlgeView.vue'
 
 const routes = [
   {
@@ -25,6 +26,15 @@ const routes = [
     meta: {
       title: 'FDS Display',
       icon: 'tv'
+    }
+  },
+  {
+    path: '/alge',
+    name: 'alge',
+    component: AlgeView,
+    meta: {
+      title: 'Alge Display',
+      icon: 'display_settings'
     }
   },
   {

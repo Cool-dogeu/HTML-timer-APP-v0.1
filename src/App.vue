@@ -22,6 +22,7 @@ import { useSettingsStore } from '@stores/settings'
 import { useSerialStore } from '@stores/serial'
 import { useMledStore } from '@stores/mled'
 import { useHdmiStore } from '@stores/hdmi'
+import { useAlgeStore } from '@stores/alge'
 import AppHeader from '@components/common/AppHeader.vue'
 import TabNavigation from '@components/common/TabNavigation.vue'
 import DebugConsole from '@components/common/DebugConsole.vue'
@@ -35,16 +36,19 @@ const settingsStore = useSettingsStore()
 const serialStore = useSerialStore()
 const mledStore = useMledStore()
 const hdmiStore = useHdmiStore()
+const algeStore = useAlgeStore()
 
 // Initialize all stores
 onMounted(() => {
   settingsStore.initialize()
   mledStore.initialize()
   hdmiStore.initialize()
+  algeStore.initialize()
 
   // Auto-reconnect to previously authorized devices
   serialStore.autoReconnect()
   mledStore.autoReconnect()
+  algeStore.autoReconnect()
 })
 </script>
 

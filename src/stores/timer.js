@@ -10,6 +10,7 @@ import { saveResults, loadResults, clearResults as clearStoredResults } from '@s
 import { useSettingsStore } from './settings'
 import { useMledStore } from './mled'
 import { useHdmiStore } from './hdmi'
+import { useAlgeStore } from './alge'
 
 export const useTimerStore = defineStore('timer', () => {
   // ============================================================================
@@ -324,16 +325,18 @@ export const useTimerStore = defineStore('timer', () => {
   // ============================================================================
 
   /**
-   * Watch timer state and route to MLED and HDMI displays
+   * Watch timer state and route to MLED, HDMI, and Alge displays
    */
   watch([displayTime, isRunning], ([time, running]) => {
     const mledStore = useMledStore()
     const hdmiStore = useHdmiStore()
+    const algeStore = useAlgeStore()
     const state = running ? 'running' : 'finished'
 
-    // Route to both display types
+    // Route to all display types
     mledStore.routeTimerToDisplay(time, state)
     hdmiStore.routeTimerToDisplay(time, state)
+    algeStore.routeTimerToDisplay(time, state)
   })
 
   // ============================================================================

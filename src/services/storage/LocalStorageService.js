@@ -9,6 +9,7 @@ const STORAGE_KEYS = {
   THEME: 'theme',
   MLED_SETTINGS: 'mled_settings',
   HDMI_SETTINGS: 'hdmi_settings',
+  ALGE_SETTINGS: 'alge_settings',
 }
 
 /**
@@ -152,6 +153,32 @@ export function loadHdmiSettings() {
 }
 
 /**
+ * Save Alge settings
+ * @param {Object} algeSettings - Alge configuration
+ */
+export function saveAlgeSettings(algeSettings) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.ALGE_SETTINGS, JSON.stringify(algeSettings))
+  } catch (error) {
+    console.error('Failed to save Alge settings:', error)
+  }
+}
+
+/**
+ * Load Alge settings
+ * @returns {Object|null} Alge settings or null
+ */
+export function loadAlgeSettings() {
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.ALGE_SETTINGS)
+    return data ? JSON.parse(data) : null
+  } catch (error) {
+    console.error('Failed to load Alge settings:', error)
+    return null
+  }
+}
+
+/**
  * Clear all app data from localStorage
  */
 export function clearAllData() {
@@ -176,6 +203,8 @@ export default {
   loadMledSettings,
   saveHdmiSettings,
   loadHdmiSettings,
+  saveAlgeSettings,
+  loadAlgeSettings,
   clearAllData,
   STORAGE_KEYS,
 }
