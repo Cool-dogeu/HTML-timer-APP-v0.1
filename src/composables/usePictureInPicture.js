@@ -195,17 +195,46 @@ export function usePictureInPicture() {
           const valueEl = pipWindow.value.document.getElementById('pip-timer-value')
           const statusEl = pipWindow.value.document.getElementById('pip-timer-status')
           const displayEl = pipWindow.value.document.getElementById('pip-timer-display')
+          const containerEl = pipWindow.value.document.body.firstChild
+          const titleEl = pipWindow.value.document.querySelector('h2')
 
+          // Update timer content
           if (valueEl) valueEl.textContent = timerStore.displayTime
           if (statusEl) statusEl.textContent = timerStore.timerStatus
+
+          // Get current theme colors
+          const currentDarkMode = settingsStore.isDarkMode || false
+          const currentBgColor = currentDarkMode ? '#1e1e1e' : '#f5f5f5'
+          const currentTextColor = currentDarkMode ? '#e5e7eb' : '#333'
+          const currentDisplayBgColor = currentDarkMode ? '#3a3a3a' : '#f8f9fa'
+          const currentRunningBgColor = currentDarkMode ? '#1e3a5f' : '#e3f2fd'
+          const currentStatusTextColor = currentDarkMode ? '#9ca3af' : '#666'
+
+          // Update container background and text color
+          if (containerEl) {
+            containerEl.style.background = currentBgColor
+            containerEl.style.color = currentTextColor
+          }
+
+          // Update title color
+          if (titleEl) {
+            titleEl.style.color = currentTextColor
+          }
+
+          // Update status text color
+          if (statusEl) {
+            statusEl.style.color = currentStatusTextColor
+          }
+
+          // Update display background based on running state
           if (displayEl) {
             if (timerStore.isRunning) {
-              displayEl.style.background = runningBgColor
-              displayEl.style.boxShadow = isDarkMode
+              displayEl.style.background = currentRunningBgColor
+              displayEl.style.boxShadow = currentDarkMode
                 ? '0 0 20px rgba(33, 150, 243, 0.5)'
                 : '0 0 20px rgba(33, 150, 243, 0.3)'
             } else {
-              displayEl.style.background = displayBgColor
+              displayEl.style.background = currentDisplayBgColor
               displayEl.style.boxShadow = 'none'
             }
           }

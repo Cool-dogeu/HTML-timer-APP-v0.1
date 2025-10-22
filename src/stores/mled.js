@@ -76,7 +76,7 @@ export const useMledStore = defineStore('mled', () => {
   const downClearTimer = ref(null)
 
   // Timer LINK module
-  const linkEnabled = ref(false)
+  const linkEnabled = ref(true) // Enabled by default
   const linkToMled = ref(true)
   const linkLine = ref(7)
   const linkColor = ref('Green')

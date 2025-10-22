@@ -35,7 +35,7 @@ export const useAlgeStore = defineStore('alge', () => {
   const cwActiveIndex = ref(0) // Currently active coursewalk (1-4)
 
   // Timer LINK module
-  const linkEnabled = ref(false)
+  const linkEnabled = ref(true) // Enabled by default
   const linkHold = ref(7) // Hold time in seconds after timer stops
   const linkStatus = ref('Waiting for timer data...')
   const linkClearTimer = ref(null)
