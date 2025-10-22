@@ -13,6 +13,7 @@
     <InfoModal v-if="settingsStore.showInfo" />
     <CompactTimerModal v-if="settingsStore.showCompactTimer" />
     <ClearConfirmationModal v-if="settingsStore.showClearConfirmation" />
+    <RefreshConfirmationModal v-if="settingsStore.showRefreshConfirmation" />
   </div>
 </template>
 
@@ -31,6 +32,7 @@ import SettingsModal from '@/components/modals/SettingsModal.vue'
 import InfoModal from '@/components/modals/InfoModal.vue'
 import CompactTimerModal from '@/components/modals/CompactTimerModal.vue'
 import ClearConfirmationModal from '@/components/modals/ClearConfirmationModal.vue'
+import RefreshConfirmationModal from '@/components/modals/RefreshConfirmationModal.vue'
 
 const settingsStore = useSettingsStore()
 const serialStore = useSerialStore()
