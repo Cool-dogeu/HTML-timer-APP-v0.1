@@ -39,6 +39,7 @@ export const useAlgeStore = defineStore('alge', () => {
   const linkHold = ref(7) // Hold time in seconds after timer stops
   const linkStatus = ref('Waiting for timer data...')
   const linkClearTimer = ref(null)
+  const linkLastSentSecond = ref(-1) // Track last sent second for throttling
 
   // Initialization flag
   const isInitializing = ref(true)
@@ -385,6 +386,13 @@ export const useAlgeStore = defineStore('alge', () => {
       const dd = parts[1] ? parseInt(parts[1].substring(0, 2).padEnd(2, '0')) : 0
 
       if (state === 'running') {
+        // THROTTLE: Only send once per second (when second changes)
+        // This matches the Python fdstoalge.py behavior
+        if (sec === linkLastSentSecond.value) {
+          return // Skip - already sent for this second
+        }
+        linkLastSentSecond.value = sec
+
         // Running - send without decimals
         await manager.value.sendTimeWithoutDecimals(sec)
         previewText.value = `${sec}.  `
@@ -397,6 +405,9 @@ export const useAlgeStore = defineStore('alge', () => {
           linkClearTimer.value = null
         }
       } else if (state === 'finished') {
+        // Reset throttle for next run
+        linkLastSentSecond.value = -1
+
         // Finished - send with decimals
         await manager.value.sendTimeWithDecimals(sec, dd)
         previewText.value = `${sec}.${dd.toString().padStart(2, '0')}`
