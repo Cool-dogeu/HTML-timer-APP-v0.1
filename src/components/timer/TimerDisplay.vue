@@ -49,9 +49,11 @@
 import { ref, computed } from 'vue'
 import { useTimerStore } from '@stores/timer'
 import { useSettingsStore } from '@stores/settings'
+import { usePictureInPicture } from '@/composables/usePictureInPicture'
 
 const timerStore = useTimerStore()
 const settingsStore = useSettingsStore()
+const { openPictureInPicture } = usePictureInPicture()
 
 // Copy button effect state
 const copyButtonEffect = ref(null)
@@ -85,13 +87,6 @@ async function copyLatestResult() {
 function updateDisplayPrecision() {
   settingsStore.saveSettings()
   timerStore.updateDisplayTime()
-}
-
-/**
- * Open Picture-in-Picture window (compact timer modal)
- */
-function openPictureInPicture() {
-  settingsStore.showCompactTimer = true
 }
 </script>
 

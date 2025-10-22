@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="connection-type-selector">
-      <label class="connection-type-label">Connection Type:</label>
+      <label class="connection-type-label">Timer Type:</label>
       <div class="connection-type-options">
         <label class="radio-label">
           <input
@@ -10,7 +10,7 @@
             v-model="serialStore.connectionType"
             :disabled="serialStore.isConnected"
           />
-          Web Serial API
+          TBOX + TIMY (serial)
         </label>
         <label class="radio-label">
           <input
@@ -19,7 +19,7 @@
             v-model="serialStore.connectionType"
             :disabled="serialStore.isConnected"
           />
-          WebUSB API
+          TIMY (USB)
         </label>
       </div>
     </div>
