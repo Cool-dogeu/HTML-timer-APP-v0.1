@@ -331,10 +331,12 @@ export const useSerialStore = defineStore('serial', () => {
     if (packet.type === 'timing') {
       // Channel 0 with absolute time = start signal
       if (packet.channelNumber === 0 && packet.mode === 'absolute') {
+        console.log('Start signal detected - isRunning:', timerStore.isRunning)
         timerStore.startTimer(packet.absoluteTime, packet.userId)
       }
       // Channel 1 with delta time = finish signal
       else if (packet.channelNumber === 1 && packet.mode === 'delta') {
+        console.log('Finish signal detected - isRunning:', timerStore.isRunning)
         const status = packet.deltaTime > 0 ? 'clean' : 'fault'
         timerStore.stopTimer(packet.deltaTime, status, packet.userId)
       }

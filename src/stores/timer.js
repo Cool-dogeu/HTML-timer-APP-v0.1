@@ -77,6 +77,12 @@ export const useTimerStore = defineStore('timer', () => {
    * @param {number} userId - User ID from packet
    */
   function startTimer(absoluteTime, userId = 0) {
+    // Prevent starting timer if already running
+    if (isRunning.value) {
+      console.log('Timer already running - ignoring start signal')
+      return
+    }
+
     console.log('Timer started:', { absoluteTime, userId })
 
     isRunning.value = true
