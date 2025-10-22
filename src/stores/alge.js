@@ -386,6 +386,12 @@ export const useAlgeStore = defineStore('alge', () => {
       const dd = parts[1] ? parseInt(parts[1].substring(0, 2).padEnd(2, '0')) : 0
 
       if (state === 'running') {
+        // DETECT NEW RUN START: Clear display when timer starts from 0
+        // This prevents flashing previous result digits
+        if (sec === 0 && linkLastSentSecond.value !== 0) {
+          await manager.value.clear()
+        }
+
         // THROTTLE: Only send once per second (when second changes)
         // This matches the Python fdstoalge.py behavior
         if (sec === linkLastSentSecond.value) {
