@@ -114,10 +114,15 @@ export const useTimerStore = defineStore('timer', () => {
   function stopTimer(deltaTime, status = 'clean', userId = 0) {
     console.log('Timer stopped:', { deltaTime, status, userId })
 
-    // Only stop if this is for the active user
-    if (activeUserId.value !== null && userId !== activeUserId.value) {
-      console.log('Ignoring stop signal for different user')
+    // Don't stop if timer isn't running
+    if (!isRunning.value) {
+      console.log('Ignoring stop signal - timer is not running')
       return
+    }
+
+    // Optional: Warn if user ID mismatch (but still allow stop)
+    if (activeUserId.value !== null && userId !== activeUserId.value) {
+      console.warn(`User ID mismatch: started with ${activeUserId.value}, stopping with ${userId}`)
     }
 
     isRunning.value = false
