@@ -61,6 +61,7 @@ export class AlgeSerialManager {
   /**
    * Build time frame WITH decimals (hundredths)
    * Format: "  0   .       S.DD 00" (<100s) or "  0   .     H SS.DD 00" (>=100s)
+   * Matches Python fdstoalge.py implementation exactly
    * @param {number} sec - Seconds (integer part)
    * @param {number} dd - Hundredths/centiseconds (0-99)
    * @returns {string} Complete frame
@@ -81,6 +82,7 @@ export class AlgeSerialManager {
   /**
    * Build time frame WITHOUT decimals (running timer)
    * Format: "  0   .       S.   00" (<100s) or "  0   .     H SS.   00" (>=100s)
+   * Matches Python fdstoalge.py implementation exactly
    * @param {number} sec - Seconds (integer)
    * @returns {string} Complete frame
    */

@@ -4,7 +4,7 @@
  */
 
 /**
- * Format seconds to MM:SS.FF or MM:SS.FFF format
+ * Format seconds to SS.FF or SS.FFF format (always in seconds, even above 60s)
  * @param {number} seconds - Time in seconds
  * @param {boolean} highPrecision - Use 3 decimal places (true) or 2 (false)
  * @returns {string} Formatted time string
@@ -15,19 +15,13 @@ export function formatTime(seconds, highPrecision = false) {
   }
 
   const totalSeconds = Math.abs(seconds)
-  const minutes = Math.floor(totalSeconds / 60)
-  const secs = totalSeconds % 60
 
   if (highPrecision) {
-    // Format with 3 decimal places
-    return minutes > 0
-      ? `${minutes}:${secs.toFixed(3).padStart(6, '0')}`
-      : secs.toFixed(3)
+    // Format with 3 decimal places - always in seconds
+    return totalSeconds.toFixed(3)
   } else {
-    // Format with 2 decimal places
-    return minutes > 0
-      ? `${minutes}:${secs.toFixed(2).padStart(5, '0')}`
-      : secs.toFixed(2)
+    // Format with 2 decimal places - always in seconds
+    return totalSeconds.toFixed(2)
   }
 }
 

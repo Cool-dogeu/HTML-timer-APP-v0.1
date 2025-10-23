@@ -6,8 +6,10 @@
       <h2>Supported browsers and timers</h2>
       <p>
         This app works on Chrome and Edge. Supported timers are FDS T-BOX
-        and ALGE TDC8001. TIMY3 support coming soon. FDS T-BOX may require
-        Windows drivers: you can download them from
+        connected via USB or serial cable, and ALGE TDC8001 connected via
+        serial cable. TIMY3 can be connected via serial or USB cable (USB
+        works only on macOS). FDS T-BOX may require Windows drivers: you can
+        download them from
         <a href="https://fdstiming.com/download/"
           >https://fdstiming.com/download/</a
         >. ALGE Timy requires Windows drivers:
