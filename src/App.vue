@@ -13,6 +13,7 @@
     <InfoModal v-if="settingsStore.showInfo" />
     <ClearConfirmationModal v-if="settingsStore.showClearConfirmation" />
     <RefreshConfirmationModal v-if="settingsStore.showRefreshConfirmation" />
+    <DisconnectionModal v-if="serialStore.showConnectionLostModal" />
   </div>
 </template>
 
@@ -31,6 +32,7 @@ import SettingsModal from '@/components/modals/SettingsModal.vue'
 import InfoModal from '@/components/modals/InfoModal.vue'
 import ClearConfirmationModal from '@/components/modals/ClearConfirmationModal.vue'
 import RefreshConfirmationModal from '@/components/modals/RefreshConfirmationModal.vue'
+import DisconnectionModal from '@/components/modals/DisconnectionModal.vue'
 
 const settingsStore = useSettingsStore()
 const serialStore = useSerialStore()
