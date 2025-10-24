@@ -26,7 +26,7 @@ const settingsStore = useSettingsStore();
 const timerStore = useTimerStore();
 
 const handleClearResults = () => {
-  timerStore.clearResults();
+  timerStore.clearAllResults();
   settingsStore.confirmClearResults();
 };
 </script>

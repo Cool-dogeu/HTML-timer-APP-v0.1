@@ -2,7 +2,7 @@
   <header class="app-header">
     <div class="logo-container">
       <img src="/assets/images/logo.png" alt="CoolDog" class="logo" />
-      <h1>Agility Timer Online v2.1</h1>
+      <h1>Agility Timer Online v2.1.1</h1>
     </div>
 
     <div class="connection-status">

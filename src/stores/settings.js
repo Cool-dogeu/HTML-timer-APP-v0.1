@@ -378,7 +378,7 @@ export const useSettingsStore = defineStore('settings', () => {
    * Confirm clear results action
    */
   function confirmClearResults() {
-    showClearConfirmation.value = true
+    showClearConfirmation.value = false
   }
 
   /**
