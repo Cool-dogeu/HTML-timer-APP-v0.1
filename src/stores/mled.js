@@ -21,6 +21,9 @@ export const useMledStore = defineStore('mled', () => {
   const manager = ref(null)
   const port = ref(null)
   const deviceInfo = ref(null)
+  const manualDisconnect = ref(false)
+  const showConnectionLostModal = ref(false)
+  const connectionCheckInterval = ref(null)
 
   // Display settings
   const line = ref(7) // Main display line
@@ -89,7 +92,7 @@ export const useMledStore = defineStore('mled', () => {
   const dataEnabled = ref(false)
   const dataSource = ref('url')
   const dataFileHandle = ref(null)
-  const dataUrl = ref('https://www.smarteragilitysecretary.com/api/ring-jumbotron?key=38-1&token=b9d6ea8054ab28ebf82d6b38dfaae74479764c91852dac2250b63b08bb659d54')
+  const dataUrl = ref('')
   const dataAutoUpdate = ref(false)
   const dataUpdateInterval = ref(null)
   const dataStatus = ref('No data loaded')
@@ -245,6 +248,9 @@ export const useMledStore = defineStore('mled', () => {
 
       console.log('MLED connected successfully')
 
+      // Start connection monitoring
+      startConnectionMonitoring()
+
       // Send welcome message
       await sendFrame(line.value, brightness.value, '^cs 2^FDS MLED^cs 0^')
 
@@ -268,6 +274,12 @@ export const useMledStore = defineStore('mled', () => {
    * Disconnect from MLED display
    */
   async function disconnect() {
+    // Mark as manual disconnect to prevent showing disconnection modal
+    manualDisconnect.value = true
+
+    // Stop connection monitoring
+    stopConnectionMonitoring()
+
     if (manager.value) {
       try {
         await manager.value.disconnect()
@@ -284,6 +296,11 @@ export const useMledStore = defineStore('mled', () => {
     localStorage.removeItem('mledDeviceInfo')
 
     console.log('MLED disconnected')
+
+    // Reset manual disconnect flag after a short delay
+    setTimeout(() => {
+      manualDisconnect.value = false
+    }, 500)
   }
 
   /**
@@ -354,8 +371,46 @@ export const useMledStore = defineStore('mled', () => {
   function handleConnectionChange(connected) {
     isConnected.value = connected
 
-    if (!connected) {
-      console.log('MLED connection lost')
+    if (!connected && !manualDisconnect.value) {
+      // Unexpected disconnection
+      console.log('MLED connection lost unexpectedly')
+      showConnectionLostModal.value = true
+      stopConnectionMonitoring()
+    }
+  }
+
+  // ============================================================================
+  // CONNECTION MONITORING
+  // ============================================================================
+
+  /**
+   * Start periodic connection check
+   */
+  function startConnectionMonitoring() {
+    if (connectionCheckInterval.value) {
+      clearInterval(connectionCheckInterval.value)
+    }
+
+    connectionCheckInterval.value = setInterval(async () => {
+      if (manager.value) {
+        const stillConnected = await manager.value.checkConnection()
+        if (!stillConnected && !manualDisconnect.value) {
+          console.log('MLED connection check failed')
+          isConnected.value = false
+          showConnectionLostModal.value = true
+          stopConnectionMonitoring()
+        }
+      }
+    }, 2000) // Check every 2 seconds
+  }
+
+  /**
+   * Stop connection monitoring
+   */
+  function stopConnectionMonitoring() {
+    if (connectionCheckInterval.value) {
+      clearInterval(connectionCheckInterval.value)
+      connectionCheckInterval.value = null
     }
   }
 
@@ -1508,6 +1563,7 @@ export const useMledStore = defineStore('mled', () => {
     stopCoursewalks()
     stopCountUp()
     stopCountDown()
+    stopConnectionMonitoring()
 
     if (linkClearTimer.value) {
       clearTimeout(linkClearTimer.value)
@@ -1532,6 +1588,7 @@ export const useMledStore = defineStore('mled', () => {
     manager,
     port,
     deviceInfo,
+    showConnectionLostModal,
 
     // Display settings
     line,

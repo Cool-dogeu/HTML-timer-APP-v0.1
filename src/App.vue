@@ -14,6 +14,8 @@
     <ClearConfirmationModal v-if="settingsStore.showClearConfirmation" />
     <RefreshConfirmationModal v-if="settingsStore.showRefreshConfirmation" />
     <DisconnectionModal v-if="serialStore.showConnectionLostModal" />
+    <MledDisconnectionModal v-if="mledStore.showConnectionLostModal" />
+    <AlgeDisconnectionModal v-if="algeStore.showConnectionLostModal" />
   </div>
 </template>
 
@@ -33,6 +35,8 @@ import InfoModal from '@/components/modals/InfoModal.vue'
 import ClearConfirmationModal from '@/components/modals/ClearConfirmationModal.vue'
 import RefreshConfirmationModal from '@/components/modals/RefreshConfirmationModal.vue'
 import DisconnectionModal from '@/components/modals/DisconnectionModal.vue'
+import MledDisconnectionModal from '@/components/modals/MledDisconnectionModal.vue'
+import AlgeDisconnectionModal from '@/components/modals/AlgeDisconnectionModal.vue'
 
 const settingsStore = useSettingsStore()
 const serialStore = useSerialStore()

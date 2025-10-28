@@ -100,7 +100,27 @@ export const useTimerStore = defineStore('timer', () => {
       if (isRunning.value && startTime.value) {
         const elapsed = (Date.now() - startTime.value) / 1000
         const settingsStore = useSettingsStore()
-        displayTime.value = formatTime(elapsed, settingsStore.highPrecisionTime)
+
+        // Check if max running time has been reached
+        if (elapsed >= settingsStore.maxRunningTime) {
+          // Stop timer at max time without creating a result
+          isRunning.value = false
+          displayTime.value = formatTime(settingsStore.maxRunningTime, settingsStore.highPrecisionTime)
+          timerStatus.value = 'Max time reached'
+
+          // Clear interval
+          if (runningTimerInterval.value) {
+            clearInterval(runningTimerInterval.value)
+            runningTimerInterval.value = null
+          }
+
+          // Reset active user
+          activeUserId.value = null
+
+          console.log('Timer stopped: Max running time reached')
+        } else {
+          displayTime.value = formatTime(elapsed, settingsStore.highPrecisionTime)
+        }
       }
     }, 50) // Update every 50ms for smooth display
   }

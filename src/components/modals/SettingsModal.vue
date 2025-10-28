@@ -4,6 +4,31 @@
       <h2>Settings</h2>
 
       <div class="settings-section">
+        <h3>Timer Settings</h3>
+        <div class="form-group">
+          <label for="maxRunningTime">Max Running Time</label>
+          <select
+            id="maxRunningTime"
+            v-model.number="tempSettings.maxRunningTime"
+            class="form-control"
+          >
+            <option :value="120">2 minutes</option>
+            <option :value="180">3 minutes</option>
+            <option :value="240">4 minutes</option>
+            <option :value="300">5 minutes</option>
+            <option :value="360">6 minutes</option>
+            <option :value="420">7 minutes</option>
+            <option :value="480">8 minutes</option>
+            <option :value="540">9 minutes</option>
+            <option :value="600">10 minutes</option>
+          </select>
+          <small class="form-help">
+            Timer will automatically stop after this duration if no finish signal is received
+          </small>
+        </div>
+      </div>
+
+      <div class="settings-section">
         <h3>API Integration</h3>
         <div class="form-group">
           <label class="checkbox-label">
@@ -184,6 +209,7 @@ import { useSettingsStore } from '@stores/settings';
 const settingsStore = useSettingsStore();
 
 const tempSettings = ref({
+  maxRunningTime: 120,
   apiEnabled: false,
   apiProvider: 'agigames',
   apiEndpoint: '',
@@ -205,7 +231,17 @@ const apiTestResult = ref(null);
 watch(() => settingsStore.showSettings, (newValue) => {
   if (newValue) {
     // Clone current settings when modal opens
-    tempSettings.value = JSON.parse(JSON.stringify(settingsStore.settings));
+    tempSettings.value = {
+      maxRunningTime: settingsStore.maxRunningTime,
+      apiEnabled: settingsStore.apiEnabled,
+      apiProvider: settingsStore.apiProvider,
+      apiEndpoint: settingsStore.apiEndpoint,
+      apiMethod: settingsStore.apiMethod,
+      apiKey: settingsStore.apiKey,
+      apiStartedEnabled: settingsStore.apiStartedEnabled,
+      apiFinishedEnabled: settingsStore.apiFinishedEnabled,
+      statusMappings: { ...settingsStore.statusMappings }
+    };
     apiTestResult.value = null;
   }
 });
@@ -262,7 +298,22 @@ const testApiConnection = async () => {
 };
 
 const handleSave = () => {
-  settingsStore.saveSettings(tempSettings.value);
+  // Update store with temp settings
+  settingsStore.maxRunningTime = tempSettings.value.maxRunningTime;
+  settingsStore.apiEnabled = tempSettings.value.apiEnabled;
+  settingsStore.apiProvider = tempSettings.value.apiProvider;
+  settingsStore.apiEndpoint = tempSettings.value.apiEndpoint;
+  settingsStore.apiMethod = tempSettings.value.apiMethod;
+  settingsStore.apiKey = tempSettings.value.apiKey;
+  settingsStore.apiStartedEnabled = tempSettings.value.apiStartedEnabled;
+  settingsStore.apiFinishedEnabled = tempSettings.value.apiFinishedEnabled;
+  settingsStore.statusMappings = { ...tempSettings.value.statusMappings };
+
+  // Save to localStorage
+  settingsStore.persistSettings();
+
+  // Close modal
+  settingsStore.showSettings = false;
 };
 
 const handleCancel = () => {

@@ -15,6 +15,7 @@ export const useSettingsStore = defineStore('settings', () => {
   // Display preferences
   const highPrecisionTime = ref(false)
   const isDarkMode = ref(false)
+  const maxRunningTime = ref(120) // Default 2 minutes in seconds
 
   // Auto-connect preferences
   const autoConnectEnabled = ref(true)
@@ -86,6 +87,7 @@ export const useSettingsStore = defineStore('settings', () => {
     if (savedSettings) {
       // Display preferences
       highPrecisionTime.value = savedSettings.highPrecisionTime ?? false
+      maxRunningTime.value = savedSettings.maxRunningTime ?? 120
 
       // Auto-connect preferences
       autoConnectEnabled.value = savedSettings.autoConnectEnabled ?? true
@@ -129,6 +131,7 @@ export const useSettingsStore = defineStore('settings', () => {
   function persistSettings() {
     const settingsToSave = {
       highPrecisionTime: highPrecisionTime.value,
+      maxRunningTime: maxRunningTime.value,
       autoConnectEnabled: autoConnectEnabled.value,
       mledAutoConnectEnabled: mledAutoConnectEnabled.value,
       apiEnabled: apiEnabled.value,
@@ -393,7 +396,7 @@ export const useSettingsStore = defineStore('settings', () => {
   // ============================================================================
 
   watch(
-    [highPrecisionTime, autoConnectEnabled, mledAutoConnectEnabled],
+    [highPrecisionTime, maxRunningTime, autoConnectEnabled, mledAutoConnectEnabled],
     () => {
       if (!isInitializing.value) {
         persistSettings()
@@ -408,6 +411,7 @@ export const useSettingsStore = defineStore('settings', () => {
   return {
     // State
     highPrecisionTime,
+    maxRunningTime,
     isDarkMode,
     autoConnectEnabled,
     mledAutoConnectEnabled,

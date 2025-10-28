@@ -20,6 +20,9 @@ export const useAlgeStore = defineStore('alge', () => {
   const manager = ref(null)
   const port = ref(null)
   const deviceInfo = ref(null)
+  const manualDisconnect = ref(false)
+  const showConnectionLostModal = ref(false)
+  const connectionCheckInterval = ref(null)
 
   // Display settings
   const previewText = ref('')
@@ -125,6 +128,9 @@ export const useAlgeStore = defineStore('alge', () => {
 
       console.log('Alge connected successfully')
 
+      // Start connection monitoring
+      startConnectionMonitoring()
+
       // Clear display on connect
       await manager.value.clear()
     } catch (error) {
@@ -137,6 +143,12 @@ export const useAlgeStore = defineStore('alge', () => {
    * Disconnect from Alge display
    */
   async function disconnect() {
+    // Mark as manual disconnect to prevent showing disconnection modal
+    manualDisconnect.value = true
+
+    // Stop connection monitoring
+    stopConnectionMonitoring()
+
     if (manager.value) {
       try {
         await manager.value.disconnect()
@@ -153,6 +165,11 @@ export const useAlgeStore = defineStore('alge', () => {
     localStorage.removeItem('algeDeviceInfo')
 
     console.log('Alge disconnected')
+
+    // Reset manual disconnect flag after a short delay
+    setTimeout(() => {
+      manualDisconnect.value = false
+    }, 500)
   }
 
   /**
@@ -215,8 +232,46 @@ export const useAlgeStore = defineStore('alge', () => {
   function handleConnectionChange(connected) {
     isConnected.value = connected
 
-    if (!connected) {
-      console.log('Alge connection lost')
+    if (!connected && !manualDisconnect.value) {
+      // Unexpected disconnection
+      console.log('Alge connection lost unexpectedly')
+      showConnectionLostModal.value = true
+      stopConnectionMonitoring()
+    }
+  }
+
+  // ============================================================================
+  // CONNECTION MONITORING
+  // ============================================================================
+
+  /**
+   * Start periodic connection check
+   */
+  function startConnectionMonitoring() {
+    if (connectionCheckInterval.value) {
+      clearInterval(connectionCheckInterval.value)
+    }
+
+    connectionCheckInterval.value = setInterval(async () => {
+      if (manager.value) {
+        const stillConnected = await manager.value.checkConnection()
+        if (!stillConnected && !manualDisconnect.value) {
+          console.log('Alge connection check failed')
+          isConnected.value = false
+          showConnectionLostModal.value = true
+          stopConnectionMonitoring()
+        }
+      }
+    }, 2000) // Check every 2 seconds
+  }
+
+  /**
+   * Stop connection monitoring
+   */
+  function stopConnectionMonitoring() {
+    if (connectionCheckInterval.value) {
+      clearInterval(connectionCheckInterval.value)
+      connectionCheckInterval.value = null
     }
   }
 
@@ -483,6 +538,7 @@ export const useAlgeStore = defineStore('alge', () => {
    */
   function cleanup() {
     stopCoursewalks()
+    stopConnectionMonitoring()
 
     if (linkClearTimer.value) {
       clearTimeout(linkClearTimer.value)
@@ -503,6 +559,7 @@ export const useAlgeStore = defineStore('alge', () => {
     manager,
     port,
     deviceInfo,
+    showConnectionLostModal,
 
     // Display settings
     previewText,
