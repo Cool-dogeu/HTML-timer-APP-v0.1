@@ -1,7 +1,31 @@
 {
-  "name": "html-timer-app-v0.1",
-  "version": "1.0.0",
-  "description": "",
+  "name": "agility-timer-app",
+  "version": "2.1.2",
+  "description": "Modern Agility Timer with Web Serial API support",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "lint": "eslint --ext .js,.vue src"
+  },
+  "dependencies": {
+    "pinia": "^2.1.7",
+    "vue": "^3.4.21",
+    "vue-router": "^4.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.4",
+    "@vue/test-utils": "^2.4.5",
+    "eslint": "^8.57.0",
+    "eslint-plugin-vue": "^9.23.0",
+    "happy-dom": "^14.3.0",
+    "vite": "^5.2.0",
+    "vitest": "^1.4.0"
+  },
   "homepage": "https://github.com/Cool-dogeu/HTML-timer-APP-v0.1#readme",
   "bugs": {
     "url": "https://github.com/Cool-dogeu/HTML-timer-APP-v0.1/issues"
@@ -12,9 +36,5 @@
   },
   "license": "ISC",
   "author": "",
-  "type": "commonjs",
-  "main": "sw.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  }
+  "packageManager": "yarn@4.9.1+sha512.f95ce356460e05be48d66401c1ae64ef84d163dd689964962c6888a9810865e39097a5e9de748876c2e0bf89b232d583c33982773e9903ae7a76257270986538"
 }

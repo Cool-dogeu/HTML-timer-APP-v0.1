@@ -2,6 +2,9 @@
 /*/xml /.netlify/functions/xml?competitionId=:splat 200
 /:competition/xml /.netlify/functions/xml?competitionId=:competition 200
 
+# Proxy for smarteragilitysecretary.com API to avoid CORS
+/api/ring-jumbotron* https://www.smarteragilitysecretary.com/api/ring-jumbotron:splat 200!
+
 # Service Worker - no cache
 /sw.js    /sw.js   200   Cache-Control:public,max-age=0,must-revalidate
 

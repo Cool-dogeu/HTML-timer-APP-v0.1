@@ -1,0 +1,48 @@
+{
+  "name": "Agility Timer",
+  "short_name": "Agility Timer",
+  "description": "Professional agility timing system with hardware integration",
+  "start_url": "/timer.html",
+  "display": "standalone",
+  "background_color": "#f5f5f5",
+  "theme_color": "#2196F3",
+  "orientation": "any",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["sports", "utilities", "productivity"],
+  "icons": [
+    {
+      "src": "assets/images/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/images/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Timer",
+      "short_name": "Timer",
+      "description": "Start timing session",
+      "url": "/timer.html",
+      "icons": [
+        {
+          "src": "assets/images/logo.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "assets/images/logo.png",
+      "type": "image/png",
+      "sizes": "640x480"
+    }
+  ]
+}
