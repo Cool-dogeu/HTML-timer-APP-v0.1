@@ -12,11 +12,7 @@
         download them from
         <a href="https://fdstiming.com/download/"
           >https://fdstiming.com/download/</a
-        >. ALGE Timy requires Windows drivers:
-        <a
-          href="https://alge-timing.com/alge/download/driver/TimyUSBDriver.exe"
-          >download here</a
-        >.
+        >
       </p>
 
       <div class="important-notice">
