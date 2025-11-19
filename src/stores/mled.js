@@ -1194,7 +1194,13 @@ export const useMledStore = defineStore('mled', () => {
     }
 
     try {
-      const fetchUrl = transformToProxiedUrl(dataUrl.value)
+      let fetchUrl = transformToProxiedUrl(dataUrl.value)
+
+      // Add cache-busting timestamp parameter
+      const timestamp = Date.now()
+      const separator = fetchUrl.includes('?') ? '&' : '?'
+      fetchUrl = `${fetchUrl}${separator}t=${timestamp}`
+
       console.log('Fetching from:', fetchUrl)
 
       const response = await fetch(fetchUrl)
