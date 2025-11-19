@@ -25,8 +25,8 @@ self.addEventListener('install', (event) => {
       })
       .then(() => {
         console.log('Service Worker: All files cached');
-        // Force the waiting service worker to become the active service worker
-        return self.skipWaiting();
+        // Don't automatically skip waiting - wait for user confirmation
+        // return self.skipWaiting();
       })
       .catch((error) => {
         console.error('Service Worker: Error caching files', error);

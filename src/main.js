@@ -24,10 +24,11 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     let refreshing = false
 
-    // Reload page when new service worker takes control
+    // Reload page when new service worker takes control (only if user confirmed)
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!refreshing) {
+      if (!refreshing && sessionStorage.getItem('sw-update-confirmed') === 'true') {
         refreshing = true
+        sessionStorage.removeItem('sw-update-confirmed')
         console.log('Service Worker: Controller changed, reloading page')
         window.location.reload()
       }
@@ -56,6 +57,8 @@ if ('serviceWorker' in navigator) {
 
               // Show user a confirmation dialog
               if (confirm('New version available! Reload to update?')) {
+                // Mark that user confirmed the update
+                sessionStorage.setItem('sw-update-confirmed', 'true')
                 // Tell the new service worker to skip waiting
                 newWorker.postMessage({ type: 'SKIP_WAITING' })
               }
