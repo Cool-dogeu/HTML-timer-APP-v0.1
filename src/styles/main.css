@@ -666,6 +666,26 @@ body.dark-mode .api-test-result.error {
     }
 }
 
+/* Enable vertical scrolling on small height screens */
+@media (max-height: 999px) {
+    body {
+        overflow: auto; /* Allow vertical scrolling */
+    }
+
+    #app {
+        height: auto; /* Allow natural height */
+        min-height: 100vh; /* At least full viewport */
+    }
+
+    .app-content-wrapper {
+        overflow: visible;
+    }
+
+    .timer-content-wrapper {
+        overflow: visible;
+    }
+}
+
 @media (max-width: 640px) {
     .app-header {
         padding: 1rem;
