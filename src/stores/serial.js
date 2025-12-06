@@ -334,11 +334,22 @@ export const useSerialStore = defineStore('serial', () => {
         console.log('Start signal detected - isRunning:', timerStore.isRunning)
         timerStore.startTimer(packet.absoluteTime, packet.userId)
       }
-      // Channel 1 with delta time = finish signal
-      else if (packet.channelNumber === 1 && packet.mode === 'delta') {
+      // Channel 1 = finish signal (accept both delta and absolute time)
+      else if (packet.channelNumber === 1) {
         console.log('Finish signal detected - isRunning:', timerStore.isRunning)
-        const status = packet.deltaTime > 0 ? 'clean' : 'fault'
-        timerStore.stopTimer(packet.deltaTime, status, packet.userId)
+
+        let deltaTime = packet.deltaTime
+
+        // If absolute time mode, calculate elapsed time from start
+        if (packet.mode === 'absolute' && packet.absoluteTime && timerStore.startTimeAbsolute) {
+          // Calculate elapsed time in seconds
+          const elapsedMs = packet.absoluteTime.getTime() - timerStore.startTimeAbsolute.getTime()
+          deltaTime = elapsedMs / 1000
+          console.log(`Calculated delta time from absolute: start=${timerStore.startTimeAbsolute}, finish=${packet.absoluteTime}, elapsed=${deltaTime}s`)
+        }
+
+        const status = deltaTime > 0 ? 'clean' : 'fault'
+        timerStore.stopTimer(deltaTime, status, packet.userId)
       }
     }
     else if (packet.type === 'control') {
