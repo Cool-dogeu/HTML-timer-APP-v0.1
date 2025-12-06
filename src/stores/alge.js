@@ -36,6 +36,7 @@ export const useAlgeStore = defineStore('alge', () => {
   const cwCancel = ref(false)
   const cwTimers = ref([])
   const cwActiveIndex = ref(0) // Currently active coursewalk (1-4)
+  const cwRunning = ref(false)
 
   // Timer LINK module
   const linkEnabled = ref(true) // Enabled by default
@@ -328,6 +329,7 @@ export const useAlgeStore = defineStore('alge', () => {
    */
   function stopCoursewalks() {
     cwCancel.value = true
+    cwRunning.value = false
     cwTimers.value.forEach((id) => clearTimeout(id))
     cwTimers.value = []
     cwActiveIndex.value = 0
@@ -377,6 +379,7 @@ export const useAlgeStore = defineStore('alge', () => {
    */
   async function runCoursewalk(upto, minutes) {
     cwCancel.value = false
+    cwRunning.value = true
     cwTimers.value = []
 
     // Cancel Timer LINK auto-clear
@@ -401,6 +404,7 @@ export const useAlgeStore = defineStore('alge', () => {
     cwActiveIndex.value = 0
     activeLabel.value = 'Idle'
     previewText.value = ''
+    cwRunning.value = false
   }
 
   /**
@@ -413,6 +417,10 @@ export const useAlgeStore = defineStore('alge', () => {
 
     if (!cwEnabled.value) {
       throw new Error('Coursewalks module is disabled')
+    }
+
+    if (cwRunning.value) {
+      throw new Error('Coursewalk is already running')
     }
 
     const version = parseInt(cwVersion.value)
@@ -571,6 +579,7 @@ export const useAlgeStore = defineStore('alge', () => {
     cwDuration,
     cwBreak,
     cwActiveIndex,
+    cwRunning,
 
     // Timer LINK module
     linkEnabled,

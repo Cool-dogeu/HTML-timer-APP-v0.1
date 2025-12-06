@@ -37,7 +37,9 @@
 
       <!-- Buttons row -->
       <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-        <button @click="hdmiStore.startCoursewalk" class="btn btn-primary" :disabled="!hdmiStore.cwEnabled">Start</button>
+        <button @click="hdmiStore.startCoursewalk" class="btn btn-primary" :disabled="!hdmiStore.cwEnabled || hdmiStore.cwRunning">
+          {{ hdmiStore.cwRunning ? 'Running...' : 'Start' }}
+        </button>
       </div>
     </div>
   </div>

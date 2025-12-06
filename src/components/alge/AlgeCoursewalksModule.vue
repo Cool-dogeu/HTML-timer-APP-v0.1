@@ -41,7 +41,9 @@
 
       <!-- Buttons row -->
       <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-        <button @click="algeStore.startCoursewalk" class="btn btn-primary" :disabled="!algeStore.cwEnabled">Start</button>
+        <button @click="algeStore.startCoursewalk" class="btn btn-primary" :disabled="!algeStore.cwEnabled || algeStore.cwRunning">
+          {{ algeStore.cwRunning ? 'Running...' : 'Start' }}
+        </button>
       </div>
     </div>
   </div>

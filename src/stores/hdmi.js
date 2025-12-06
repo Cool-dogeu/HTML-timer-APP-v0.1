@@ -37,6 +37,7 @@ export const useHdmiStore = defineStore('hdmi', () => {
   const cwWait = ref('20')
   const cwCancel = ref(false)
   const cwTimers = ref([])
+  const cwRunning = ref(false)
 
   // Countdown Timer module
   const timerEnabled = ref(false)
@@ -457,6 +458,7 @@ export const useHdmiStore = defineStore('hdmi', () => {
    */
   function stopCoursewalks() {
     cwCancel.value = true
+    cwRunning.value = false
     cwTimers.value.forEach((id) => clearTimeout(id))
     cwTimers.value = []
   }
@@ -515,6 +517,7 @@ export const useHdmiStore = defineStore('hdmi', () => {
     }
 
     cwCancel.value = false
+    cwRunning.value = true
     cwTimers.value = []
 
     for (let i = 1; i <= n; i++) {
@@ -525,6 +528,7 @@ export const useHdmiStore = defineStore('hdmi', () => {
 
     activeLabel.value = 'Idle'
     previewText.value = ''
+    cwRunning.value = false
   }
 
   /**
@@ -537,6 +541,10 @@ export const useHdmiStore = defineStore('hdmi', () => {
 
     if (!cwEnabled.value) {
       throw new Error('Coursewalks module is disabled')
+    }
+
+    if (cwRunning.value) {
+      throw new Error('Coursewalk is already running')
     }
 
     const version = parseInt(cwVersion.value)
@@ -890,6 +898,7 @@ export const useHdmiStore = defineStore('hdmi', () => {
     cwVersion,
     cwDuration,
     cwWait,
+    cwRunning,
 
     // Countdown Timer module
     timerEnabled,

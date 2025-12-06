@@ -58,6 +58,7 @@ export const useMledStore = defineStore('mled', () => {
   const cwWait = ref('20')
   const cwCancel = ref(false)
   const cwTimers = ref([])
+  const cwRunning = ref(false)
 
   // Countdown Timer module
   const timerEnabled = ref(false)
@@ -865,6 +866,7 @@ export const useMledStore = defineStore('mled', () => {
    */
   function stopCoursewalks() {
     cwCancel.value = true
+    cwRunning.value = false
     cwTimers.value.forEach((id) => clearTimeout(id))
     cwTimers.value = []
   }
@@ -927,6 +929,7 @@ export const useMledStore = defineStore('mled', () => {
     }
 
     cwCancel.value = false
+    cwRunning.value = true
     cwTimers.value = []
 
     for (let i = 1; i <= n; i++) {
@@ -937,6 +940,7 @@ export const useMledStore = defineStore('mled', () => {
 
     activeLabel.value = 'Idle'
     previewText.value = ''
+    cwRunning.value = false
   }
 
   /**
@@ -949,6 +953,10 @@ export const useMledStore = defineStore('mled', () => {
 
     if (!cwEnabled.value) {
       throw new Error('Coursewalks module is disabled')
+    }
+
+    if (cwRunning.value) {
+      throw new Error('Coursewalk is already running')
     }
 
     const version = parseInt(cwVersion.value)
@@ -1616,6 +1624,7 @@ export const useMledStore = defineStore('mled', () => {
     cwVersion,
     cwDuration,
     cwWait,
+    cwRunning,
 
     // Countdown Timer module
     timerEnabled,
