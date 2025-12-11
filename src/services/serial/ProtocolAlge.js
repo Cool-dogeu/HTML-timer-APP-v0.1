@@ -123,21 +123,45 @@ export class ProtocolAlge {
     console.log('ABSO', absoluteTime)
     console.log('DELT', deltaTime)
 
-    // Special handling: Convert channel 1 ABSOLUTE time (HH:MM:SS.FF with 2 decimals) to DELTA time
-    // This allows "c1M 00:00:05.77" to work as a finish signal with 5.77 seconds elapsed
+    // Special handling: Convert channel 1 ABSOLUTE time to DELTA time
+    // Lowercase c1 = hardware has pre-calculated the time, always treat as delta
+    // Uppercase C1 = we need to calculate C0-C1 difference (keep as absolute)
     if (channelNumber === 1 && mode === TimeMode.ABSOLUTE) {
-      // Check if it's in HH:MM:SS.FF format (2 decimals) by checking the original timeString
-      const twoDecimalFormat = /^\d{2}:\d{2}:\d{2}\.\d{2}$/
-      if (twoDecimalFormat.test(timeString)) {
-        // Convert HH:MM:SS.FF to delta seconds
-        const [time, ms] = timeString.split('.')
-        const [hours, minutes, seconds] = time.split(':').map(Number)
-        deltaTime = hours * 3600 + minutes * 60 + seconds + parseInt(ms) / 100
-        mode = TimeMode.DELTA
-        absoluteTime = null
-        console.debug(
-          `ParsePacket: Channel 1 with HH:MM:SS.FF format converted to DELTA time: ${deltaTime}s`
-        )
+      // Check if original channel string starts with lowercase 'c' or is RT/RTM
+      const isLowercase = channelString.startsWith('c') || normalizedChannel === 'RT' || normalizedChannel === 'RTM'
+
+      if (isLowercase) {
+        // Convert absolute time to delta seconds for lowercase c1
+        if (absoluteTimeRegex1.test(timeString) || absoluteTimeRegex2.test(timeString)) {
+          // Parse the absolute time
+          let hours, minutes, seconds, ms
+
+          if (absoluteTimeRegex1.test(timeString)) {
+            // Format: HH:MM:SS.FFFF (2-4 decimals)
+            const [time, msStr] = timeString.split('.')
+            const timeParts = time.split(':').map(Number)
+            hours = timeParts[0]
+            minutes = timeParts[1]
+            seconds = timeParts[2]
+            // Normalize ms to actual milliseconds
+            ms = parseInt(msStr.padEnd(4, '0')) / 10
+          } else {
+            // Format: HH:MM:SS:FFFF
+            const parts = timeString.split(':')
+            hours = parseInt(parts[0])
+            minutes = parseInt(parts[1])
+            seconds = parseInt(parts[2])
+            ms = parseInt(parts[3]) / 10
+          }
+
+          // Convert to total seconds
+          deltaTime = hours * 3600 + minutes * 60 + seconds + ms / 1000
+          mode = TimeMode.DELTA
+          absoluteTime = null
+          console.debug(
+            `ParsePacket: Lowercase c1 with absolute time format converted to DELTA time: ${deltaTime}s`
+          )
+        }
       }
     }
 
