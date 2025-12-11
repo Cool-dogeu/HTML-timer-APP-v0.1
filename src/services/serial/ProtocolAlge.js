@@ -42,7 +42,9 @@ export class ProtocolAlge {
     const [userString, channelString, timeStringRaw, statusString] = parts
     const timeString = timeStringRaw.trim() // Remove leading/trailing spaces
 
-    const userId = parseInt(userString)
+    // Extract numeric userId, handling prefixes like 't0010' or '0003'
+    const userIdMatch = userString.match(/\d+/)
+    const userId = userIdMatch ? parseInt(userIdMatch[0]) : NaN
     const status = parseInt(statusString)
 
     if (isNaN(userId) || isNaN(status) || userId < 0 || status < 0) {
