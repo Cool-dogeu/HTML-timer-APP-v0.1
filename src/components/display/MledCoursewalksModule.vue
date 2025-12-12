@@ -41,7 +41,13 @@
 
       <!-- Buttons row -->
       <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-        <button @click="mledStore.startCoursewalk" class="btn btn-primary" :disabled="!mledStore.cwEnabled">Start</button>
+        <button
+          @click="mledStore.cwIsRunning ? mledStore.stopCoursewalks() : mledStore.startCoursewalk()"
+          class="btn"
+          :class="mledStore.cwIsRunning ? 'btn-secondary' : 'btn-primary'"
+          :disabled="!mledStore.cwEnabled">
+          {{ mledStore.cwIsRunning ? 'Cancel' : 'Start' }}
+        </button>
       </div>
     </div>
   </div>

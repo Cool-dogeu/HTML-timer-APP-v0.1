@@ -59,6 +59,10 @@ export const useAlgeStore = defineStore('alge', () => {
     return isConnected.value ? 'status-ok' : 'status-error'
   })
 
+  const cwIsRunning = computed(() => {
+    return !cwCancel.value && cwTimers.value.length > 0
+  })
+
   // ============================================================================
   // ACTIONS - Connection
   // ============================================================================
@@ -571,6 +575,7 @@ export const useAlgeStore = defineStore('alge', () => {
     cwDuration,
     cwBreak,
     cwActiveIndex,
+    cwIsRunning,
 
     // Timer LINK module
     linkEnabled,

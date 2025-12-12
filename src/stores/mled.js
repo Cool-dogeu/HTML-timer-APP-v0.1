@@ -129,6 +129,10 @@ export const useMledStore = defineStore('mled', () => {
     return isConnected.value ? 'status-ok' : 'status-error'
   })
 
+  const cwIsRunning = computed(() => {
+    return !cwCancel.value && cwTimers.value.length > 0
+  })
+
   // ============================================================================
   // ACTIONS - Connection
   // ============================================================================
@@ -1616,6 +1620,7 @@ export const useMledStore = defineStore('mled', () => {
     cwVersion,
     cwDuration,
     cwWait,
+    cwIsRunning,
 
     // Countdown Timer module
     timerEnabled,

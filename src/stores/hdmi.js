@@ -79,6 +79,10 @@ export const useHdmiStore = defineStore('hdmi', () => {
     return windowRef.value && !windowRef.value.closed
   })
 
+  const cwIsRunning = computed(() => {
+    return !cwCancel.value && cwTimers.value.length > 0
+  })
+
   // ============================================================================
   // ACTIONS - Window Management
   // ============================================================================
@@ -890,6 +894,7 @@ export const useHdmiStore = defineStore('hdmi', () => {
     cwVersion,
     cwDuration,
     cwWait,
+    cwIsRunning,
 
     // Countdown Timer module
     timerEnabled,

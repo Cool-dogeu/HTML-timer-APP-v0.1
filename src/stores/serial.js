@@ -348,7 +348,8 @@ export const useSerialStore = defineStore('serial', () => {
 
         // Use the delta time from the packet (hardware has calculated it)
         const deltaTime = packet.deltaTime
-        const status = packet.status === 0 ? 'clean' : 'fault'
+        // Always treat as clean - ignore fault status from hardware
+        const status = 'clean'
 
         timerStore.stopTimer(deltaTime, status, packet.userId)
       }

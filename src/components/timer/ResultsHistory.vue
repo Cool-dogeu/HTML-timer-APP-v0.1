@@ -33,7 +33,7 @@
             title="Click to select, double-click to copy"
           >
             <td>{{ timerStore.results.length - index }}</td>
-            <td :class="'result-' + result.status">
+            <td class="result-clean">
               {{ formatResultDisplay(result) }}
             </td>
             <td>{{ result.timestamp }}</td>
@@ -141,7 +141,8 @@ async function copyResultRow(index) {
 function formatResultDisplay(result) {
   const precision = settingsStore.highPrecisionTime ? 3 : 2
   const formatted = result.time.toFixed(precision)
-  return result.status === 'fault' ? `${formatted}F` : formatted
+  // Always show clean results without F suffix
+  return formatted
 }
 
 /**
