@@ -334,21 +334,22 @@ export const useSerialStore = defineStore('serial', () => {
         console.log('Start signal detected - isRunning:', timerStore.isRunning)
         timerStore.startTimer(packet.absoluteTime, packet.userId)
       }
-      // Channel 1 = finish signal (accept both delta and absolute time)
+      // Channel 1 = finish signal
       else if (packet.channelNumber === 1) {
-        console.log('Finish signal detected - isRunning:', timerStore.isRunning)
+        // IGNORE uppercase C1 - only process lowercase c1 (hardware-calculated time)
+        const isUppercaseC1 = packet.originalChannelString && packet.originalChannelString.startsWith('C')
 
-        let deltaTime = packet.deltaTime
-
-        // If absolute time mode, calculate elapsed time from start
-        if (packet.mode === 'absolute' && packet.absoluteTime && timerStore.startTimeAbsolute) {
-          // Calculate elapsed time in seconds
-          const elapsedMs = packet.absoluteTime.getTime() - timerStore.startTimeAbsolute.getTime()
-          deltaTime = elapsedMs / 1000
-          console.log(`Calculated delta time from absolute: start=${timerStore.startTimeAbsolute}, finish=${packet.absoluteTime}, elapsed=${deltaTime}s`)
+        if (isUppercaseC1) {
+          console.log('Ignoring uppercase C1 packet - only lowercase c1 is processed')
+          return
         }
 
-        const status = deltaTime > 0 ? 'clean' : 'fault'
+        console.log('Finish signal detected (lowercase c1) - isRunning:', timerStore.isRunning)
+
+        // Use the delta time from the packet (hardware has calculated it)
+        const deltaTime = packet.deltaTime
+        const status = packet.status === 0 ? 'clean' : 'fault'
+
         timerStore.stopTimer(deltaTime, status, packet.userId)
       }
     }
