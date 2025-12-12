@@ -1,4 +1,4 @@
-const CACHE_NAME = 'agility-timer-v2.1.4';
+const CACHE_NAME = 'agility-timer-v2.1.6';
 const urlsToCache = [
   '/',
   '/timer.html',

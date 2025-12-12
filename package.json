@@ -1,6 +1,6 @@
 {
   "name": "agility-timer-app",
-  "version": "2.1.4",
+  "version": "2.1.6",
   "description": "Modern Agility Timer with Web Serial API support",
   "type": "module",
   "scripts": {
